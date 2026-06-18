@@ -1,0 +1,4 @@
+node_modules
+presentation
+.env
+.DS_Store

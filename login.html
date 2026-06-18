@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Finora — Log in or create your account</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <link href="assets/css/styles.css" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ============================ Navbar ============================ -->
+  <nav class="navbar navbar-expand-lg sticky-top">
+    <div class="container">
+      <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+        <span class="brand-logo">F</span> Finora
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="nav">
+        <ul class="navbar-nav mx-auto gap-1">
+          <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="market.html">Market</a></li>
+          <li class="nav-item"><a class="nav-link" href="portfolio.html">Portfolio</a></li>
+          <li class="nav-item"><a class="nav-link" href="prosubscription.html">Pro</a></li>
+          <li class="nav-item"><a class="nav-link" href="profile.html">Profile</a></li>
+        </ul>
+        <div class="d-flex align-items-center gap-2" data-nav-auth></div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ============================= Auth ============================= -->
+  <main class="auth-wrap py-5">
+    <div class="container">
+      <div class="row g-4 justify-content-center align-items-stretch">
+
+        <!-- Marketing aside -->
+        <div class="col-lg-5 d-none d-lg-block">
+          <div class="auth-aside h-100 d-flex flex-column">
+            <a class="navbar-brand d-flex align-items-center gap-2 mb-4" href="index.html">
+              <span class="brand-logo">F</span> Finora
+            </a>
+            <h2 class="fw-bold mb-3">Your portfolio,<br /><span class="brand-gradient-text">reimagined.</span></h2>
+            <p class="text-secondary-2 mb-4">Join 2.4M+ investors trading commission-free with real-time data and AI-powered insights.</p>
+
+            <div class="d-grid gap-3 mb-auto">
+              <div class="d-flex gap-3 align-items-start">
+                <span class="feature-icon" style="width:42px;height:42px;font-size:1.1rem"><i class="bi bi-graph-up-arrow"></i></span>
+                <div><div class="fw-semibold">Commission-free trading</div><div class="text-muted-2 small">Buy and sell stocks with zero fees.</div></div>
+              </div>
+              <div class="d-flex gap-3 align-items-start">
+                <span class="feature-icon" style="width:42px;height:42px;font-size:1.1rem"><i class="bi bi-shield-check"></i></span>
+                <div><div class="fw-semibold">Bank-grade security</div><div class="text-muted-2 small">2FA &amp; encryption protect your assets.</div></div>
+              </div>
+              <div class="d-flex gap-3 align-items-start">
+                <span class="feature-icon" style="width:42px;height:42px;font-size:1.1rem"><i class="bi bi-cash-stack"></i></span>
+                <div><div class="fw-semibold">$25,000 demo balance</div><div class="text-muted-2 small">Practice with virtual funds on signup.</div></div>
+              </div>
+            </div>
+
+            <div class="card-elevated p-3 mt-4">
+              <div class="d-flex gap-2 text-amber mb-1">
+                <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
+              </div>
+              <p class="text-secondary-2 small mb-2">“The cleanest trading app I've used. Finora makes investing feel effortless.”</p>
+              <div class="text-muted-2 small">— Alex R., verified investor</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Form -->
+        <div class="col-lg-5 col-md-8">
+          <div class="auth-card">
+            <div class="text-center mb-4">
+              <h3 class="fw-bold mb-1" id="authTitle">Welcome back</h3>
+              <p class="text-muted-2 mb-0" id="authSubtitle">Log in to access your dashboard</p>
+            </div>
+
+            <div class="auth-tabs mb-4">
+              <button type="button" data-tab="login" class="active">Log in</button>
+              <button type="button" data-tab="register">Sign up</button>
+            </div>
+
+            <!-- Login form -->
+            <form id="loginForm" novalidate>
+              <div class="mb-3">
+                <label class="form-label">Email address</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                  <input type="email" class="form-control" name="email" placeholder="you@example.com" autocomplete="email" required />
+                </div>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Password</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                  <input type="password" class="form-control" name="password" placeholder="Enter your password" autocomplete="current-password" required />
+                  <button class="btn btn-social" type="button" data-toggle-pw><i class="bi bi-eye"></i></button>
+                </div>
+              </div>
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="remember" />
+                  <label class="form-check-label text-muted-2 small" for="remember">Remember me</label>
+                </div>
+                <a href="#" class="small">Forgot password?</a>
+              </div>
+              <button type="submit" class="btn btn-brand w-100 btn-lg mb-3">Log in</button>
+            </form>
+
+            <!-- Register form -->
+            <form id="registerForm" class="d-none" novalidate>
+              <div class="mb-3">
+                <label class="form-label">Full name</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-person"></i></span>
+                  <input type="text" class="form-control" name="name" placeholder="Jane Doe" autocomplete="name" required />
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Email address</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                  <input type="email" class="form-control" name="email" placeholder="you@example.com" autocomplete="email" required />
+                </div>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Password</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                  <input type="password" class="form-control" name="password" placeholder="Create a password" autocomplete="new-password" required />
+                  <button class="btn btn-social" type="button" data-toggle-pw><i class="bi bi-eye"></i></button>
+                </div>
+                <div class="password-meter mt-2"><span id="pwMeter"></span></div>
+                <div class="text-muted-2 small mt-1" id="pwHint">Use 8+ characters with a mix of letters, numbers &amp; symbols.</div>
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Confirm password</label>
+                <div class="input-group">
+                  <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                  <input type="password" class="form-control" name="confirm" placeholder="Re-enter your password" autocomplete="new-password" required />
+                  <button class="btn btn-social" type="button" data-toggle-pw><i class="bi bi-eye"></i></button>
+                </div>
+                <div class="small mt-1" id="matchHint"></div>
+              </div>
+              <div class="form-check mb-3 mt-3">
+                <input class="form-check-input" type="checkbox" id="terms" required />
+                <label class="form-check-label text-muted-2 small" for="terms">
+                  I agree to the <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.
+                </label>
+              </div>
+              <button type="submit" class="btn btn-brand w-100 btn-lg mb-3">Create account</button>
+            </form>
+
+            <div class="divider-or my-3">or continue with</div>
+            <div class="row g-2">
+              <div class="col-6"><button type="button" class="btn btn-social w-100" data-google-login><i class="bi bi-google me-2"></i>Google</button></div>
+              <div class="col-6"><button class="btn btn-social w-100" data-demo-social><i class="bi bi-apple me-2"></i>Apple</button></div>
+            </div>
+
+            <p class="text-center text-muted-2 small mt-4 mb-0" id="switchHint">
+              Don't have an account? <a href="#" data-switch="register">Sign up free</a>
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script src="js/core/firebase-config.js"></script>
+  <script src="js/core/main.js"></script>
+  <script src="js/pages/login.js"></script>
+</body>
+</html>
