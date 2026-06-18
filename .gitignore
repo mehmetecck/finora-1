@@ -2,3 +2,6 @@ node_modules
 presentation
 .env
 .DS_Store
+*firebase-adminsdk*.json
+serviceAccount*.json
+service-account*.json

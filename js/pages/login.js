@@ -3,15 +3,16 @@
    ===================================================================== */
 
 document.addEventListener("DOMContentLoaded", async () => {
+  const params = new URLSearchParams(window.location.search);
+  const requestedNext = params.get("next") || "profile.html";
+  const next = /^(https?:)?\/\//i.test(requestedNext) ? "profile.html" : requestedNext;
+
   // If already logged in, go straight to profile.
   const existing = await Finora.authReady;
   if (existing) {
-    window.location.href = "profile.html";
+    window.location.href = next;
     return;
   }
-
-  const params = new URLSearchParams(window.location.search);
-  const next = params.get("next") || "profile.html";
 
   const loginForm = document.getElementById("loginForm");
   const registerForm = document.getElementById("registerForm");
@@ -154,12 +155,49 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
+  const resetLink = document.querySelector("[data-reset-password]");
+  if (resetLink) {
+    let resetInFlight = false;
+    resetLink.addEventListener("click", async (e) => {
+      e.preventDefault();
+      if (resetInFlight) return;
+      clearErrors(loginForm);
+      const email = loginForm.email.value.trim();
+      if (!isEmail(email)) {
+        fieldError(loginForm.email, "Enter your email first so we can send a reset link.");
+        return;
+      }
+
+      resetInFlight = true;
+      resetLink.classList.add("disabled");
+      resetLink.setAttribute("aria-disabled", "true");
+      try {
+        const res = await Finora.resetPassword(email);
+        if (!res.ok) {
+          fieldError(loginForm.email, res.error);
+          Finora.toast(res.error, "error");
+          return;
+        }
+
+        const message = Finora.isFirebase
+          ? "Password reset email sent. Check your inbox."
+          : "Demo mode: password reset emails require Firebase config.";
+        Finora.toast(message, Finora.isFirebase ? "success" : "info");
+      } finally {
+        resetInFlight = false;
+        resetLink.classList.remove("disabled");
+        resetLink.removeAttribute("aria-disabled");
+      }
+    });
+  }
+
   /* ----------------------------- Login ---------------------------- */
   loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     clearErrors(loginForm);
     const email = loginForm.email.value.trim();
     const password = loginForm.password.value;
+    const remember = document.getElementById("remember")?.checked ?? true;
     let valid = true;
     if (!isEmail(email)) { fieldError(loginForm.email, "Enter a valid email address."); valid = false; }
     if (!password) { fieldError(loginForm.password, "Password is required."); valid = false; }
@@ -167,7 +205,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const btn = loginForm.querySelector('[type="submit"]');
     setLoading(btn, true, "Logging in…");
-    const res = await Finora.login({ email, password });
+    const res = await Finora.login({ email, password, remember });
     setLoading(btn, false);
     if (!res.ok) {
       fieldError(loginForm.password, res.error);
@@ -223,7 +261,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (googleBtn) {
     googleBtn.addEventListener("click", async () => {
       setLoading(googleBtn, true, "Connecting…");
-      const res = await Finora.loginWithGoogle();
+      const remember = document.getElementById("remember")?.checked ?? true;
+      const res = await Finora.loginWithGoogle({ remember });
       setLoading(googleBtn, false);
       if (!res.ok) { Finora.toast(res.error, "error"); return; }
       Finora.toast("Signed in with Google!", "success");

@@ -241,6 +241,56 @@ a:hover { color: var(--brand); }
   background: var(--bg-elevated);
   border: 1px solid var(--border);
 }
+.ticker-avatar.sm { width: 34px; height: 34px; border-radius: 9px; font-size: 0.68rem; flex: 0 0 auto; }
+.ticker-avatar.lg { width: 54px; height: 54px; border-radius: 14px; font-size: 0.95rem; }
+
+.stock-list-item {
+  width: 100%;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  transition: background var(--transition), border-color var(--transition), transform var(--transition);
+}
+.stock-list-item:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border);
+}
+.stock-list-item.active {
+  background: rgba(20, 184, 166, 0.12);
+  border-color: rgba(20, 184, 166, 0.45);
+}
+.stock-list-item:focus-visible {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 0.2rem rgba(20, 184, 166, 0.2);
+}
+
+.news-item {
+  align-items: center;
+  padding: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-main);
+  transition: background var(--transition), border-color var(--transition);
+}
+.news-item:hover { background: var(--bg-elevated); border-color: var(--brand); }
+.news-tag {
+  flex: 0 0 auto;
+  min-width: 56px;
+  text-align: center;
+  border-radius: 999px;
+  padding: 0.25rem 0.5rem;
+  background: rgba(56, 189, 248, 0.14);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
 
 /* --------------------------- Market ticker --------------------------- */
 .ticker-tape {

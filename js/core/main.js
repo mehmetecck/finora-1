@@ -37,6 +37,7 @@ const Finora = (() => {
       case "auth/email-already-in-use": return "This email is already in use.";
       case "auth/invalid-email": return "Please enter a valid email address.";
       case "auth/weak-password": return "Password is too weak. Use at least 6 characters.";
+      case "auth/missing-email": return "Please enter your email address.";
       case "auth/missing-password": return "Please enter a password.";
       case "auth/user-not-found":
       case "auth/wrong-password":
@@ -51,6 +52,7 @@ const Finora = (() => {
       case "auth/popup-blocked": return "Your browser blocked the sign-in popup. Allow popups and try again.";
       case "auth/account-exists-with-different-credential": return "An account already exists with this email. Try logging in with your password.";
       case "auth/operation-not-allowed": return "This sign-in method isn't enabled for this Firebase project.";
+      case "auth/unauthorized-domain": return "This domain is not authorized in Firebase Authentication settings.";
       case "auth/invalid-api-key":
       case "auth/configuration-not-found": return "Firebase is not configured yet. Add your config in js/core/firebase-config.js.";
       default: return "Something went wrong. Please try again.";
@@ -63,9 +65,18 @@ const Finora = (() => {
   const Local = (() => {
     const getUsers = () => JSON.parse(localStorage.getItem(LOCAL_USERS) || "[]");
     const saveUsers = (u) => localStorage.setItem(LOCAL_USERS, JSON.stringify(u));
-    const getSessionUid = () => JSON.parse(localStorage.getItem(LOCAL_SESSION) || "null");
-    const setSessionUid = (uid) => localStorage.setItem(LOCAL_SESSION, JSON.stringify(uid));
-    const clearSession = () => localStorage.removeItem(LOCAL_SESSION);
+    const getSessionUid = () =>
+      JSON.parse(sessionStorage.getItem(LOCAL_SESSION) || localStorage.getItem(LOCAL_SESSION) || "null");
+    const setSessionUid = (uid, remember = true) => {
+      const activeStore = remember ? localStorage : sessionStorage;
+      const inactiveStore = remember ? sessionStorage : localStorage;
+      inactiveStore.removeItem(LOCAL_SESSION);
+      activeStore.setItem(LOCAL_SESSION, JSON.stringify(uid));
+    };
+    const clearSession = () => {
+      localStorage.removeItem(LOCAL_SESSION);
+      sessionStorage.removeItem(LOCAL_SESSION);
+    };
 
     // Seed a ready-to-use test account once.
     (function seed() {
@@ -103,16 +114,16 @@ const Finora = (() => {
       return { ok: true };
     }
 
-    function login({ email, password }) {
+    function login({ email, password, remember = true }) {
       const user = getUsers().find((u) => u.email.toLowerCase() === email.toLowerCase());
       if (!user || user.password !== password) {
         return { ok: false, code: "auth/invalid-credential", error: mapAuthError("auth/invalid-credential") };
       }
-      setSessionUid(user.uid);
+      setSessionUid(user.uid, remember);
       return { ok: true, user };
     }
 
-    function loginWithGoogle() {
+    function loginWithGoogle({ remember = true } = {}) {
       const users = getUsers();
       let user = users.find((u) => u.email === "google.user@gmail.com");
       if (!user) {
@@ -120,8 +131,13 @@ const Finora = (() => {
         users.push(user);
         saveUsers(users);
       }
-      setSessionUid(user.uid);
+      setSessionUid(user.uid, remember);
       return Promise.resolve({ ok: true, user });
+    }
+
+    function resetPassword(email) {
+      if (!email) return { ok: false, code: "auth/missing-email", error: mapAuthError("auth/missing-email") };
+      return { ok: true };
     }
 
     function updateUser(patch) {
@@ -150,7 +166,7 @@ const Finora = (() => {
       clearSession();
     }
 
-    return { current, register, login, loginWithGoogle, updateUser, changePassword, deleteAccount, clearSession };
+    return { current, register, login, loginWithGoogle, resetPassword, updateUser, changePassword, deleteAccount, clearSession };
   })();
 
   /* ------------------------- Auth readiness ------------------------ */
@@ -177,6 +193,14 @@ const Finora = (() => {
 
   // Returns a valid token, refreshing it if needed (use this in API calls).
   function getToken() { return captureToken(); }
+
+  async function setAuthPersistence(remember = true) {
+    if (!USE_FIREBASE) return;
+    const persistence = remember
+      ? firebase.auth.Auth.Persistence.LOCAL
+      : firebase.auth.Auth.Persistence.SESSION;
+    await auth.setPersistence(persistence);
+  }
 
   if (USE_FIREBASE) {
     let firstFired = false;
@@ -206,13 +230,14 @@ const Finora = (() => {
     }
   }
 
-  async function login({ email, password }) {
+  async function login({ email, password, remember = true }) {
     if (!USE_FIREBASE) {
-      const res = Local.login({ email, password });
+      const res = Local.login({ email, password, remember });
       if (res.ok) { currentUser = res.user; await captureToken(); }
       return res;
     }
     try {
+      await setAuthPersistence(remember);
       const cred = await auth.signInWithEmailAndPassword(email, password);
       currentUser = cred.user;
       await captureToken(); // capture the auth token & start the session
@@ -222,14 +247,16 @@ const Finora = (() => {
     }
   }
 
-  async function loginWithGoogle() {
+  async function loginWithGoogle({ remember = true } = {}) {
     if (!USE_FIREBASE) {
-      const res = await Local.loginWithGoogle();
+      const res = await Local.loginWithGoogle({ remember });
       if (res.ok) { currentUser = res.user; await captureToken(); }
       return res;
     }
     try {
+      await setAuthPersistence(remember);
       const provider = new firebase.auth.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
       const cred = await auth.signInWithPopup(provider);
       const extras = getExtras(cred.user.uid);
       if (!extras.plan) setExtras(cred.user.uid, { plan: "Free", balance: 0 });
@@ -237,6 +264,18 @@ const Finora = (() => {
       await captureToken(); // capture the auth token & start the session
       return { ok: true, user: cred.user, token: idToken };
     } catch (e) {
+      return { ok: false, code: e.code, error: mapAuthError(e.code) };
+    }
+  }
+
+  async function resetPassword(email) {
+    if (!email) return { ok: false, code: "auth/missing-email", error: mapAuthError("auth/missing-email") };
+    if (!USE_FIREBASE) return Local.resetPassword(email);
+    try {
+      await auth.sendPasswordResetEmail(email);
+      return { ok: true };
+    } catch (e) {
+      if (e.code === "auth/user-not-found") return { ok: true };
       return { ok: false, code: e.code, error: mapAuthError(e.code) };
     }
   }
@@ -385,10 +424,10 @@ const Finora = (() => {
   }
 
   /* Protect pages that require auth (async — waits for Firebase). */
-  async function requireAuth() {
+  async function requireAuth(nextPath = window.location.pathname.split("/").pop() || "profile.html") {
     const user = await authReady;
     if (!user) {
-      window.location.href = "login.html?next=profile.html";
+      window.location.href = "login.html?next=" + encodeURIComponent(nextPath);
       return null;
     }
     return user;
@@ -405,7 +444,7 @@ const Finora = (() => {
   document.addEventListener("DOMContentLoaded", init);
 
   return {
-    authReady, register, login, loginWithGoogle, logout,
+    authReady, register, login, loginWithGoogle, resetPassword, logout,
     getProfile, updateProfile, changePassword, deleteAccount,
     requireAuth, mapAuthError, getToken,
     fmtMoney, fmtNumber, initials, toast,

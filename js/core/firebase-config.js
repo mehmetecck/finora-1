@@ -1,40 +1,60 @@
 /* =====================================================================
-   Finora — Firebase initialization
+   Finora - Firebase initialization
    ---------------------------------------------------------------------
    SETUP (one-time):
    1. Go to https://console.firebase.google.com/ and create a project.
-   2. In the project, open  Build > Authentication > Get started  and
-      enable the "Email/Password" sign-in provider.
-   3. Open  Project settings (gear icon) > Your apps > Web app (</>)  and
-      register a web app. Copy the generated "firebaseConfig" values.
-   4. Paste them below, replacing the placeholders.
+   2. In the project, open Build > Authentication > Get started and enable
+      the Email/Password and Google sign-in providers.
+   3. Open Project settings (gear icon) > Your apps > Web app (</>) and
+      register a web app. Copy the generated firebaseConfig values.
+   4. Paste the Web app config below, replacing the placeholders.
 
-   This uses the Firebase "compat" SDK so it works with plain <script>
-   tags (no bundler/modules needed). The SDK scripts are included in each
-   HTML page BEFORE this file.
+   IMPORTANT:
+   Do not paste Firebase Admin SDK / service-account JSON here. Files with
+   private_key, client_email, or type: "service_account" are server secrets and
+   must never be shipped to browsers or committed to GitHub.
+
+   This uses the Firebase compat SDK so it works with plain <script> tags.
+   The SDK scripts are included in each HTML page before this file.
    ===================================================================== */
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyCfdOUi2KpTEckJUEGS9kIBZvCribWbPeE",
+  authDomain: "skibidi-c3f4c.firebaseapp.com",
+  projectId: "skibidi-c3f4c",
+  storageBucket: "skibidi-c3f4c.firebasestorage.app",
+  messagingSenderId: "378713624345",
+  appId: "1:378713624345:web:d0b5d85b09d3886cadff88",
 };
 
-// Detect whether real credentials have been added yet. Until then, the app
-// falls back to a local (localStorage) demo auth so you can still test login.
+const requiredFirebaseKeys = ["apiKey", "authDomain", "projectId", "appId"];
+const hasAdminCredential =
+  firebaseConfig.type === "service_account" ||
+  Boolean(firebaseConfig.private_key || firebaseConfig.client_email);
+const firebaseSdkReady =
+  typeof firebase !== "undefined" &&
+  typeof firebase.initializeApp === "function" &&
+  typeof firebase.auth === "function";
+
+// Detect whether real Web app credentials have been added yet. Until then,
+// the app falls back to local demo auth so login can still be tested.
 window.FIREBASE_CONFIGURED =
-  !!firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("YOUR_");
+  firebaseSdkReady &&
+  !hasAdminCredential &&
+  requiredFirebaseKeys.every((key) => {
+    const value = firebaseConfig[key];
+    return typeof value === "string" && value && !value.startsWith("YOUR_");
+  });
 
 if (window.FIREBASE_CONFIGURED) {
-  firebase.initializeApp(firebaseConfig);
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
   window.firebaseAuth = firebase.auth();
-  // Keep the user signed in across page reloads/tabs.
-  window.firebaseAuth
-    .setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-    .catch((err) => console.warn("Auth persistence error:", err));
+} else if (hasAdminCredential) {
+  console.error(
+    "[Finora] Firebase Admin SDK credentials were provided to the browser config. Use the Firebase Web app config instead."
+  );
+} else if (!firebaseSdkReady) {
+  console.error("[Finora] Firebase SDK did not load. Check the gstatic Firebase script tags before firebase-config.js.");
 } else {
-  console.info("[Finora] Firebase not configured — using local demo auth. Test login: test@finora.com / test1234");
+  console.info("[Finora] Firebase not configured - using local demo auth. Test login: test@finora.com / test1234");
 }

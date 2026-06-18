@@ -1,7 +1,6 @@
 /* =====================================================================
-   Finora — Market page logic
+   Finora - Market page logic
    Company list + detailed stock view, powered by FinoraAPI.
-   Renders empty states until the market data API is configured.
    ===================================================================== */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -15,10 +14,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const params = new URLSearchParams(location.search);
   let activeSymbol = params.get("symbol") || null;
   let companies = [];
+  let searchTimer = null;
+  let searchRun = 0;
 
   init();
 
   async function init() {
+    listEl.innerHTML = `<div class="text-muted-2 small p-2">Loading market movers...</div>`;
+    detailEl.innerHTML = Finora.emptyState("Loading market data...", "bi-hourglass-split");
+    searchEl.addEventListener("input", handleSearchInput);
+
+    if (activeSymbol) loadDetail(activeSymbol);
+
     try {
       companies = await FinoraAPI.getTrending();
     } catch {
@@ -26,23 +33,53 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (!companies.length) {
-      listEl.innerHTML = `<div class="text-muted-2 small p-2">${"No companies available."}</div>`;
-      detailEl.innerHTML = Finora.emptyState();
-      searchEl.disabled = true;
+      if (searchEl.value.trim()) {
+        handleSearchInput();
+      } else {
+        listEl.innerHTML = `<div class="text-muted-2 small p-2">Search for a company to load market data.</div>`;
+      }
+      if (!activeSymbol) detailEl.innerHTML = Finora.emptyState("Search for a company to see market data.", "bi-search");
+    } else {
+      if (!activeSymbol) activeSymbol = companies[0].symbol;
+      if (searchEl.value.trim()) {
+        handleSearchInput();
+      } else {
+        renderList(companies);
+      }
+      if (activeSymbol) loadDetail(activeSymbol);
+    }
+
+    if (activeSymbol && !companies.some((c) => c.symbol === activeSymbol)) loadDetail(activeSymbol);
+  }
+
+  function handleSearchInput() {
+    const q = searchEl.value.trim().toLowerCase();
+    clearTimeout(searchTimer);
+
+    if (!q) {
+      renderList(companies);
       return;
     }
 
-    if (!activeSymbol) activeSymbol = companies[0].symbol;
-    renderList(companies);
-    loadDetail(activeSymbol);
+    const filtered = companies.filter(
+      (c) => c.symbol.toLowerCase().includes(q) || (c.name || "").toLowerCase().includes(q)
+    );
+    renderList(filtered);
 
-    searchEl.addEventListener("input", () => {
-      const q = searchEl.value.trim().toLowerCase();
-      const filtered = companies.filter(
-        (c) => c.symbol.toLowerCase().includes(q) || (c.name || "").toLowerCase().includes(q)
-      );
-      renderList(filtered);
-    });
+    if (q.length < 2) return;
+    const run = ++searchRun;
+    searchTimer = setTimeout(async () => {
+      renderSearchStatus(filtered);
+      try {
+        const results = await FinoraAPI.searchCompanies(q, 8);
+        if (run !== searchRun) return;
+        renderList(mergeCompanies(filtered, results));
+      } catch {
+        if (run !== searchRun) return;
+        renderList(filtered);
+        if (!filtered.length) listEl.innerHTML = `<div class="text-muted-2 small p-2">Search unavailable right now.</div>`;
+      }
+    }, 350);
   }
 
   /* --------------------------- Sidebar ---------------------------- */
@@ -51,9 +88,12 @@ document.addEventListener("DOMContentLoaded", () => {
       listEl.innerHTML = `<div class="text-muted-2 small p-2">No matches.</div>`;
       return;
     }
+
     listEl.innerHTML = items
       .map((c) => {
-        const up = c.change >= 0;
+        const price = c.price != null ? Finora.fmtMoney(c.price) : "--";
+        const hasChange = Number.isFinite(c.change);
+        const up = (c.change || 0) >= 0;
         const active = c.symbol === activeSymbol ? "active" : "";
         return `<button class="stock-list-item ${active}" data-symbol="${c.symbol}">
             <span class="ticker-avatar sm" style="background:${c.color || Finora.symbolColor(c.symbol)}">${c.symbol}</span>
@@ -62,8 +102,8 @@ document.addEventListener("DOMContentLoaded", () => {
               <span class="d-block text-muted-2 small text-truncate">${c.name || ""}</span>
             </span>
             <span class="text-end">
-              <span class="d-block small fw-semibold text-white">${Finora.fmtMoney(c.price)}</span>
-              <span class="d-block small ${up ? "text-bull" : "text-bear"}">${up ? "+" : ""}${c.change.toFixed(2)}%</span>
+              <span class="d-block small fw-semibold text-white">${price}</span>
+              <span class="d-block small ${up ? "text-bull" : "text-bear"}">${hasChange ? `${up ? "+" : ""}${c.change.toFixed(2)}%` : "--"}</span>
             </span>
           </button>`;
       })
@@ -72,6 +112,8 @@ document.addEventListener("DOMContentLoaded", () => {
     listEl.querySelectorAll("[data-symbol]").forEach((btn) => {
       btn.addEventListener("click", () => {
         activeSymbol = btn.dataset.symbol;
+        const selected = items.find((item) => item.symbol === activeSymbol);
+        if (selected && !companies.some((item) => item.symbol === selected.symbol)) companies.unshift(selected);
         renderList(items);
         loadDetail(activeSymbol);
         history.replaceState(null, "", `market.html?symbol=${activeSymbol}`);
@@ -79,9 +121,25 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function renderSearchStatus(items) {
+    renderList(items);
+    listEl.insertAdjacentHTML(
+      "afterbegin",
+      `<div class="text-muted-2 small p-2" data-search-status><span class="spinner-border spinner-border-sm me-2"></span>Searching companies...</div>`
+    );
+  }
+
+  function mergeCompanies(primary, secondary) {
+    const bySymbol = new Map();
+    [...primary, ...secondary].forEach((item) => {
+      if (item?.symbol && !bySymbol.has(item.symbol)) bySymbol.set(item.symbol, item);
+    });
+    return [...bySymbol.values()];
+  }
+
   /* --------------------------- Detail ----------------------------- */
   async function loadDetail(symbol) {
-    detailEl.innerHTML = Finora.emptyState("Loading…", "bi-hourglass-split");
+    detailEl.innerHTML = Finora.emptyState(`Loading ${symbol.toUpperCase()}...`, "bi-hourglass-split");
     let s;
     try {
       s = await FinoraAPI.getStock(symbol);
@@ -89,9 +147,10 @@ document.addEventListener("DOMContentLoaded", () => {
       s = null;
     }
     if (!s) {
-      detailEl.innerHTML = Finora.emptyState();
+      detailEl.innerHTML = Finora.emptyState(`Market data for ${symbol.toUpperCase()} is unavailable right now.`, "bi-wifi-off");
       return;
     }
+    activeSymbol = s.symbol;
     renderDetail(s);
   }
 
@@ -104,7 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <span class="ticker-avatar lg" style="background:${s.color || Finora.symbolColor(s.symbol)}">${s.symbol}</span>
             <div>
               <h4 class="fw-bold mb-0">${s.name}</h4>
-              <div class="text-muted-2 small">${s.exchange || ""} · ${s.symbol}${s.sector ? " · " + s.sector : ""}</div>
+              <div class="text-muted-2 small">${s.exchange || ""} - ${s.symbol}${s.sector ? " - " + s.sector : ""}</div>
             </div>
           </div>
           <div class="text-end">
@@ -126,7 +185,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
           <h6 class="fw-bold mb-0">Price chart</h6>
           <div class="btn-group btn-group-sm" id="rangeBtns">
-            ${["1D", "1W", "1M", "1Y"].map((r, i) => `<button class="btn btn-ghost ${i === 1 ? "active" : ""}" data-range="${r}">${r}</button>`).join("")}
+            ${["1D", "1W", "1M", "1Y"].map((r) => `<button class="btn btn-ghost ${r === "1M" ? "active" : ""}" data-range="${r}">${r}</button>`).join("")}
           </div>
         </div>
         <div id="chartWrap"><canvas id="stockChart" height="260"></canvas></div>
@@ -165,7 +224,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     renderKeyInfo(s);
     bindActions(s);
-    drawChart(s.symbol, "1W");
+    drawChart(s.symbol, "1M");
     loadHistory(s.symbol);
     loadNews(s.symbol);
 
@@ -191,7 +250,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("keyInfo").innerHTML = rows
       .map(([k, v]) => `<div class="col-6">
           <div class="text-muted-2 small">${k}</div>
-          <div class="fw-semibold">${v ?? "—"}</div>
+          <div class="fw-semibold">${v ?? "--"}</div>
         </div>`)
       .join("");
   }
@@ -262,7 +321,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="news-tag">${n.tag || "News"}</div>
           <div class="min-w-0">
             <div class="fw-semibold text-white text-truncate">${n.title}</div>
-            <div class="text-muted-2 small">${n.source || ""}${n.time ? " · " + n.time : ""}</div>
+            <div class="text-muted-2 small">${n.source || ""}${n.time ? " - " + n.time : ""}</div>
           </div>
         </a>`
       )
