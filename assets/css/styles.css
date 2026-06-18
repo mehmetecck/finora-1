@@ -292,6 +292,13 @@ a:hover { color: var(--brand); }
   font-weight: 700;
 }
 
+#chartWrap,
+#portfolioChartWrap,
+#heroChartWrap {
+  max-width: 100%;
+  overflow: hidden;
+}
+
 /* --------------------------- Market ticker --------------------------- */
 .ticker-tape {
   background: var(--bg-secondary);

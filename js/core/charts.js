@@ -49,11 +49,16 @@ const FinoraChart = (() => {
   /* Size the canvas backing store for crisp rendering on Hi-DPI screens. */
   function setup(canvas, responsive) {
     const dpr = window.devicePixelRatio || 1;
-    const cssH = parseInt(canvas.getAttribute("height"), 10) || canvas.clientHeight || 150;
+    if (!canvas.dataset.finoraCssHeight) {
+      canvas.dataset.finoraCssHeight = String(parseInt(canvas.getAttribute("height"), 10) || canvas.clientHeight || 150);
+    }
+    const cssH = parseInt(canvas.dataset.finoraCssHeight, 10) || 150;
     let cssW;
     if (responsive) {
+      const parentW = canvas.parentElement ? canvas.parentElement.getBoundingClientRect().width : 0;
       canvas.style.width = "100%";
-      cssW = canvas.clientWidth || (canvas.parentElement && canvas.parentElement.clientWidth) || 600;
+      canvas.style.display = "block";
+      cssW = Math.max(1, Math.floor(parentW || canvas.clientWidth || 600));
     } else {
       cssW = parseInt(canvas.getAttribute("width"), 10) || canvas.clientWidth || 120;
     }
@@ -171,6 +176,7 @@ const FinoraChart = (() => {
     if (opts.tooltip) {
       const parent = canvas.parentElement;
       if (parent && getComputedStyle(parent).position === "static") parent.style.position = "relative";
+      if (parent) parent.style.overflow = "hidden";
       const tip = document.createElement("div");
       tip.className = "finora-chart-tip";
       parent.appendChild(tip);

@@ -1,226 +1,92 @@
 /* =====================================================================
-   Finora - data service layer
+   Finora - real market data service
    ---------------------------------------------------------------------
-   Market data is powered by Yahoo Finance's public chart/search endpoints.
-   These endpoints are unofficial and can rate-limit, so all request code is
-   centralized here and can be swapped for a real backend later.
+   Provider: Twelve Data
+   Free API key: https://twelvedata.com/pricing
+
+   Add your key below to enable real daily quotes/charts:
+   const TWELVE_DATA_API_KEY = "YOUR_KEY";
+
+   This file intentionally does not fake prices. If the key is missing or the
+   provider rejects a request, pages render a clear unavailable state.
    ===================================================================== */
 
 const FinoraAPI = (() => {
-  const YAHOO_BASE = "https://query1.finance.yahoo.com";
-  const CORS_PROXY = "https://api.allorigins.win/raw?url=";
-  const CACHE_TTL = 60 * 1000;
-  const REQUEST_TIMEOUT = 8000;
+  const TWELVE_DATA_API_KEY = "76d6376ad8b54c4681c49311a31590a6";
+  const TWELVE_BASE = "https://api.twelvedata.com";
+  const REQUEST_TIMEOUT = 6500;
+  const CACHE_TTL = 5 * 60 * 1000;
 
   const DEFAULT_SYMBOLS = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AMD", "JPM", "V"];
-  const COMPANY_CATALOG = [
-    { symbol: "AAPL", name: "Apple Inc.", exchange: "NASDAQ", sector: "Technology" },
-    { symbol: "MSFT", name: "Microsoft Corporation", exchange: "NASDAQ", sector: "Technology" },
-    { symbol: "NVDA", name: "NVIDIA Corporation", exchange: "NASDAQ", sector: "Technology" },
-    { symbol: "GOOGL", name: "Alphabet Inc.", exchange: "NASDAQ", sector: "Communication Services" },
-    { symbol: "AMZN", name: "Amazon.com, Inc.", exchange: "NASDAQ", sector: "Consumer Cyclical" },
-    { symbol: "META", name: "Meta Platforms, Inc.", exchange: "NASDAQ", sector: "Communication Services" },
-    { symbol: "TSLA", name: "Tesla, Inc.", exchange: "NASDAQ", sector: "Consumer Cyclical" },
-    { symbol: "AMD", name: "Advanced Micro Devices, Inc.", exchange: "NASDAQ", sector: "Technology" },
-    { symbol: "JPM", name: "JPMorgan Chase & Co.", exchange: "NYSE", sector: "Financial Services" },
-    { symbol: "V", name: "Visa Inc.", exchange: "NYSE", sector: "Financial Services" },
-    { symbol: "MA", name: "Mastercard Incorporated", exchange: "NYSE", sector: "Financial Services" },
-    { symbol: "NFLX", name: "Netflix, Inc.", exchange: "NASDAQ", sector: "Communication Services" },
-    { symbol: "DIS", name: "The Walt Disney Company", exchange: "NYSE", sector: "Communication Services" },
-    { symbol: "KO", name: "The Coca-Cola Company", exchange: "NYSE", sector: "Consumer Defensive" },
-    { symbol: "PEP", name: "PepsiCo, Inc.", exchange: "NASDAQ", sector: "Consumer Defensive" },
-    { symbol: "WMT", name: "Walmart Inc.", exchange: "NYSE", sector: "Consumer Defensive" },
-    { symbol: "COST", name: "Costco Wholesale Corporation", exchange: "NASDAQ", sector: "Consumer Defensive" },
-    { symbol: "NKE", name: "NIKE, Inc.", exchange: "NYSE", sector: "Consumer Cyclical" },
-    { symbol: "MCD", name: "McDonald's Corporation", exchange: "NYSE", sector: "Consumer Cyclical" },
-    { symbol: "SBUX", name: "Starbucks Corporation", exchange: "NASDAQ", sector: "Consumer Cyclical" },
-    { symbol: "BA", name: "The Boeing Company", exchange: "NYSE", sector: "Industrials" },
-    { symbol: "CAT", name: "Caterpillar Inc.", exchange: "NYSE", sector: "Industrials" },
-    { symbol: "GE", name: "GE Aerospace", exchange: "NYSE", sector: "Industrials" },
-    { symbol: "XOM", name: "Exxon Mobil Corporation", exchange: "NYSE", sector: "Energy" },
-    { symbol: "CVX", name: "Chevron Corporation", exchange: "NYSE", sector: "Energy" },
-    { symbol: "JNJ", name: "Johnson & Johnson", exchange: "NYSE", sector: "Healthcare" },
-    { symbol: "PFE", name: "Pfizer Inc.", exchange: "NYSE", sector: "Healthcare" },
-    { symbol: "UNH", name: "UnitedHealth Group Incorporated", exchange: "NYSE", sector: "Healthcare" },
-    { symbol: "HD", name: "The Home Depot, Inc.", exchange: "NYSE", sector: "Consumer Cyclical" },
-    { symbol: "ORCL", name: "Oracle Corporation", exchange: "NYSE", sector: "Technology" },
-    { symbol: "IBM", name: "International Business Machines Corporation", exchange: "NYSE", sector: "Technology" },
-    { symbol: "INTC", name: "Intel Corporation", exchange: "NASDAQ", sector: "Technology" },
-    { symbol: "CRM", name: "Salesforce, Inc.", exchange: "NYSE", sector: "Technology" },
-    { symbol: "UBER", name: "Uber Technologies, Inc.", exchange: "NYSE", sector: "Technology" },
-    { symbol: "ABNB", name: "Airbnb, Inc.", exchange: "NASDAQ", sector: "Consumer Cyclical" },
-    { symbol: "SHOP", name: "Shopify Inc.", exchange: "NYSE", sector: "Technology" },
-    { symbol: "SPY", name: "SPDR S&P 500 ETF Trust", exchange: "NYSE Arca", sector: "ETF" },
-    { symbol: "QQQ", name: "Invesco QQQ Trust", exchange: "NASDAQ", sector: "ETF" },
-  ];
   const INDEX_SYMBOLS = [
-    { symbol: "^GSPC", name: "S&P 500" },
-    { symbol: "^DJI", name: "Dow Jones" },
-    { symbol: "^IXIC", name: "Nasdaq" },
-    { symbol: "^RUT", name: "Russell 2000" },
+    { symbol: "SPY", name: "S&P 500 ETF" },
+    { symbol: "DIA", name: "Dow Jones ETF" },
+    { symbol: "QQQ", name: "Nasdaq 100 ETF" },
+    { symbol: "IWM", name: "Russell 2000 ETF" },
   ];
-  const RANGE_MAP = {
-    "1D": { range: "1d", interval: "5m" },
-    "1W": { range: "5d", interval: "30m" },
-    "1M": { range: "1mo", interval: "1d" },
-    "1Y": { range: "1y", interval: "1wk" },
-  };
+
+  const COMPANY_CATALOG = [
+    company("AAPL", "Apple Inc.", "NASDAQ", "Technology"),
+    company("MSFT", "Microsoft Corporation", "NASDAQ", "Technology"),
+    company("NVDA", "NVIDIA Corporation", "NASDAQ", "Technology"),
+    company("GOOGL", "Alphabet Inc.", "NASDAQ", "Communication Services"),
+    company("AMZN", "Amazon.com, Inc.", "NASDAQ", "Consumer Cyclical"),
+    company("META", "Meta Platforms, Inc.", "NASDAQ", "Communication Services"),
+    company("TSLA", "Tesla, Inc.", "NASDAQ", "Consumer Cyclical"),
+    company("AMD", "Advanced Micro Devices, Inc.", "NASDAQ", "Technology"),
+    company("JPM", "JPMorgan Chase & Co.", "NYSE", "Financial Services"),
+    company("V", "Visa Inc.", "NYSE", "Financial Services"),
+    company("MA", "Mastercard Incorporated", "NYSE", "Financial Services"),
+    company("NFLX", "Netflix, Inc.", "NASDAQ", "Communication Services"),
+    company("DIS", "The Walt Disney Company", "NYSE", "Communication Services"),
+    company("KO", "The Coca-Cola Company", "NYSE", "Consumer Defensive"),
+    company("PEP", "PepsiCo, Inc.", "NASDAQ", "Consumer Defensive"),
+    company("WMT", "Walmart Inc.", "NYSE", "Consumer Defensive"),
+    company("COST", "Costco Wholesale Corporation", "NASDAQ", "Consumer Defensive"),
+    company("NKE", "NIKE, Inc.", "NYSE", "Consumer Cyclical"),
+    company("MCD", "McDonald's Corporation", "NYSE", "Consumer Cyclical"),
+    company("SBUX", "Starbucks Corporation", "NASDAQ", "Consumer Cyclical"),
+    company("BA", "The Boeing Company", "NYSE", "Industrials"),
+    company("CAT", "Caterpillar Inc.", "NYSE", "Industrials"),
+    company("GE", "GE Aerospace", "NYSE", "Industrials"),
+    company("XOM", "Exxon Mobil Corporation", "NYSE", "Energy"),
+    company("CVX", "Chevron Corporation", "NYSE", "Energy"),
+    company("JNJ", "Johnson & Johnson", "NYSE", "Healthcare"),
+    company("PFE", "Pfizer Inc.", "NYSE", "Healthcare"),
+    company("UNH", "UnitedHealth Group Incorporated", "NYSE", "Healthcare"),
+    company("HD", "The Home Depot, Inc.", "NYSE", "Consumer Cyclical"),
+    company("ORCL", "Oracle Corporation", "NYSE", "Technology"),
+    company("IBM", "International Business Machines Corporation", "NYSE", "Technology"),
+    company("INTC", "Intel Corporation", "NASDAQ", "Technology"),
+    company("CRM", "Salesforce, Inc.", "NYSE", "Technology"),
+    company("UBER", "Uber Technologies, Inc.", "NYSE", "Technology"),
+    company("ABNB", "Airbnb, Inc.", "NASDAQ", "Consumer Cyclical"),
+    company("SHOP", "Shopify Inc.", "NYSE", "Technology"),
+    company("SPY", "SPDR S&P 500 ETF Trust", "NYSE Arca", "ETF"),
+    company("QQQ", "Invesco QQQ Trust", "NASDAQ", "ETF"),
+    company("DIA", "SPDR Dow Jones Industrial Average ETF", "NYSE Arca", "ETF"),
+    company("IWM", "iShares Russell 2000 ETF", "NYSE Arca", "ETF"),
+  ];
 
   const cache = new Map();
+  const bySymbol = new Map(COMPANY_CATALOG.map((item) => [item.symbol, item]));
 
-  const isConfigured = () => true;
-  const compact = (arr) => arr.filter((item) => item != null);
-  const round = (n, digits = 2) => Number.isFinite(n) ? Number(n.toFixed(digits)) : null;
-
-  function withCache(key, loader) {
-    const hit = cache.get(key);
-    if (hit && Date.now() - hit.time < CACHE_TTL) return hit.promise;
-    const promise = loader().catch((err) => {
-      cache.delete(key);
-      throw err;
-    });
-    cache.set(key, { time: Date.now(), promise });
-    return promise;
+  function company(symbol, name, exchange, sector) {
+    return { symbol, name, exchange, sector };
   }
 
-  async function yahoo(path, params = {}) {
-    const url = new URL(YAHOO_BASE + path);
-    Object.entries(params).forEach(([key, value]) => {
-      if (value != null) url.searchParams.set(key, value);
-    });
+  function isConfigured() {
+    return Boolean(TWELVE_DATA_API_KEY && !TWELVE_DATA_API_KEY.startsWith("YOUR_"));
+  }
 
-    try {
-      return await fetchJson(url.toString());
-    } catch (err) {
-      return fetchJson(CORS_PROXY + encodeURIComponent(url.toString()));
+  function requireKey() {
+    if (!isConfigured()) {
+      throw new Error("Real market data requires a free Twelve Data API key in js/core/api.js.");
     }
   }
 
-  async function fetchJson(url) {
-    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
-    const timeout = controller ? setTimeout(() => controller.abort(), REQUEST_TIMEOUT) : null;
-    let res;
-    try {
-      res = await fetch(url, {
-        headers: { Accept: "application/json" },
-        signal: controller?.signal,
-      });
-    } finally {
-      if (timeout) clearTimeout(timeout);
-    }
-    if (!res.ok) throw new Error(`Yahoo request failed (${res.status})`);
-    const data = await res.json();
-    if (data?.chart?.error) throw new Error(data.chart.error.description || "Yahoo chart error");
-    if (data?.finance?.error) throw new Error(data.finance.error.description || "Yahoo finance error");
-    return data;
-  }
-
-  async function chart(symbol, rangeKey = "1M") {
-    const cfg = RANGE_MAP[rangeKey] || RANGE_MAP["1M"];
-    const encoded = encodeURIComponent(symbol);
-    return withCache(`chart:${symbol}:${rangeKey}`, async () => {
-      const data = await yahoo(`/v8/finance/chart/${encoded}`, {
-        range: cfg.range,
-        interval: cfg.interval,
-        includePrePost: "false",
-      });
-      const result = data?.chart?.result?.[0];
-      if (!result) throw new Error(`No chart data for ${symbol}`);
-      return result;
-    });
-  }
-
-  async function searchSymbols(query, limit = 8) {
-    const q = query.trim();
-    if (q.length < 2) return [];
-    return withCache(`search:${q.toLowerCase()}:${limit}`, async () => {
-      try {
-        const data = await yahoo("/v1/finance/search", {
-          q,
-          quotesCount: limit,
-          newsCount: 0,
-        });
-        const quotes = data?.quotes || [];
-        const yahooMatches = quotes
-          .filter((q) => ["EQUITY", "ETF"].includes(q.quoteType))
-          .slice(0, limit)
-          .map((q) => ({
-            symbol: q.symbol,
-            name: q.longname || q.shortname || q.symbol,
-            exchange: q.exchDisp || q.exchange || "",
-            sector: q.sector || q.sectorDisp || "",
-          }));
-        return yahooMatches.length ? yahooMatches : searchCatalog(q, limit);
-      } catch {
-        return searchCatalog(q, limit);
-      }
-    });
-  }
-
-  function searchCatalog(query, limit) {
-    const q = query.toLowerCase();
-    return COMPANY_CATALOG
-      .filter((c) => c.symbol.toLowerCase().includes(q) || c.name.toLowerCase().includes(q))
-      .slice(0, limit);
-  }
-
-  async function searchCompanies(query, limit = 8) {
-    const matches = await searchSymbols(query, limit);
-    return mapWithLimit(matches, 3, async (match) => {
-      try {
-        return await getSnapshot(match.symbol, match);
-      } catch {
-        return { ...match, price: null, change: 0, history: [] };
-      }
-    });
-  }
-
-  async function getSnapshot(symbol, searchMeta = {}) {
-    const result = await chart(symbol, "1M");
-    return mapChartResult(result, searchMeta);
-  }
-
-  function mapChartResult(result, searchMeta = {}) {
-    const meta = result.meta || {};
-    const quote = result.indicators?.quote?.[0] || {};
-    const closes = compact(quote.close || []);
-    const price = round(meta.regularMarketPrice ?? closes[closes.length - 1]);
-    const prevClose = round(meta.previousClose ?? meta.chartPreviousClose);
-    const firstClose = closes[0];
-    const change = prevClose ? round(((price - prevClose) / prevClose) * 100) : 0;
-    const history = closes.map((n) => round(n)).filter((n) => n != null);
-
-    return {
-      symbol: meta.symbol || searchMeta.symbol,
-      name: meta.longName || meta.shortName || searchMeta.name || searchMeta.symbol,
-      price,
-      change,
-      exchange: meta.fullExchangeName || meta.exchangeName || searchMeta.exchange || "",
-      sector: searchMeta.sector || "",
-      about: searchMeta.sector ? `${searchMeta.name || meta.shortName || meta.symbol} is listed in the ${searchMeta.sector} sector.` : "",
-      open: round(lastValue(quote.open)),
-      high: round(meta.regularMarketDayHigh ?? lastValue(quote.high)),
-      low: round(meta.regularMarketDayLow ?? lastValue(quote.low)),
-      prevClose,
-      volume: formatLarge(meta.regularMarketVolume ?? lastValue(quote.volume)),
-      avgVol: null,
-      pe: null,
-      eps: null,
-      high52: round(meta.fiftyTwoWeekHigh),
-      low52: round(meta.fiftyTwoWeekLow),
-      divYield: null,
-      beta: null,
-      cap: null,
-      history,
-      firstClose,
-    };
-  }
-
-  function lastValue(values = []) {
-    for (let i = values.length - 1; i >= 0; i--) {
-      if (values[i] != null) return values[i];
-    }
-    return null;
+  function round(n, digits = 2) {
+    return Number.isFinite(n) ? Number(n.toFixed(digits)) : null;
   }
 
   function formatLarge(n) {
@@ -231,59 +97,139 @@ const FinoraAPI = (() => {
     return String(Math.round(n));
   }
 
-  async function mapWithLimit(items, limit, mapper) {
-    const results = [];
-    for (let i = 0; i < items.length; i += limit) {
-      const batch = items.slice(i, i + limit);
-      const mapped = await Promise.allSettled(batch.map(mapper));
-      results.push(...mapped.filter((r) => r.status === "fulfilled").map((r) => r.value));
-    }
-    return results;
+  function changePct(price, prevClose) {
+    return prevClose ? round(((price - prevClose) / prevClose) * 100) : 0;
   }
 
-  async function getIndices() {
-    return mapWithLimit(INDEX_SYMBOLS, 2, async (idx) => {
-      const s = await getSnapshot(idx.symbol, idx);
-      return {
-        name: idx.name,
-        value: s.price,
-        change: s.change,
-        history: s.history,
-      };
+  async function withCache(key, loader) {
+    const hit = cache.get(key);
+    if (hit && Date.now() - hit.time < CACHE_TTL) return hit.promise;
+    const promise = loader().catch((err) => {
+      cache.delete(key);
+      throw err;
     });
+    cache.set(key, { time: Date.now(), promise });
+    return promise;
   }
 
-  async function getTrending() {
-    return mapWithLimit(DEFAULT_SYMBOLS, 3, async (symbol) => getSnapshot(symbol, { symbol }));
+  async function fetchJson(url) {
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const timeout = controller ? setTimeout(() => controller.abort(), REQUEST_TIMEOUT) : null;
+    try {
+      const res = await fetch(url, { signal: controller?.signal });
+      if (!res.ok) throw new Error(`Market API error ${res.status}`);
+      const data = await res.json();
+      if (data.status === "error" || data.code) throw new Error(data.message || "Market API error");
+      return data;
+    } finally {
+      if (timeout) clearTimeout(timeout);
+    }
+  }
+
+  async function timeSeries(symbol, outputsize = 60) {
+    requireKey();
+    const url = new URL(TWELVE_BASE + "/time_series");
+    url.searchParams.set("symbol", symbol);
+    url.searchParams.set("interval", "1day");
+    url.searchParams.set("outputsize", outputsize);
+    url.searchParams.set("apikey", TWELVE_DATA_API_KEY);
+    return withCache(`time:${symbol}:${outputsize}`, () => fetchJson(url.toString()));
+  }
+
+  function metaFor(symbol) {
+    const normalized = (symbol || "").trim().toUpperCase();
+    return bySymbol.get(normalized) || company(normalized, normalized, "", "");
   }
 
   async function getStock(symbol) {
-    if (!symbol || !symbol.trim()) throw new Error("Missing symbol");
-    const matches = await searchSymbols(symbol, 1).catch(() => []);
-    const exact = matches.find((m) => m.symbol.toUpperCase() === symbol.toUpperCase()) || matches[0] || { symbol };
-    return getSnapshot(exact.symbol, exact);
+    const normalized = symbol.trim().toUpperCase();
+    const meta = metaFor(normalized);
+    const series = await timeSeries(normalized, 60);
+    return mapSeries(normalized, meta, series);
   }
 
-  async function getHistory(symbol, range = "1W") {
-    const result = await chart(symbol, range);
-    const closes = result.indicators?.quote?.[0]?.close || [];
-    return closes.map((n) => round(n)).filter((n) => n != null);
-  }
+  function mapSeries(symbol, meta, data) {
+    const values = [...(data.values || [])].reverse();
+    if (!values.length) throw new Error(`No market data for ${symbol}`);
+    const latest = values[values.length - 1];
+    const prev = values[values.length - 2] || latest;
+    const price = round(Number(latest.close));
+    const prevClose = round(Number(prev.close));
+    const volume = Number(latest.volume);
+    const exchange = data.meta?.exchange || meta.exchange;
+    const sector = meta.sector || "";
 
-  async function getNews(symbol) {
-    const data = await yahoo("/v1/finance/search", {
-      q: symbol,
-      quotesCount: 0,
-      newsCount: 6,
-    });
-    return (data?.news || []).slice(0, 6).map((n) => ({
+    return {
       symbol,
-      title: n.title,
-      source: n.publisher,
-      time: n.providerPublishTime ? new Date(n.providerPublishTime * 1000).toLocaleDateString() : "",
-      tag: "Yahoo",
-      url: n.link,
-    }));
+      name: meta.name || symbol,
+      price,
+      change: changePct(price, prevClose),
+      exchange,
+      sector,
+      about: `${meta.name || symbol} is listed${exchange ? ` on ${exchange}` : ""}${sector ? ` in the ${sector} sector` : ""}.`,
+      open: round(Number(latest.open)),
+      high: round(Number(latest.high)),
+      low: round(Number(latest.low)),
+      prevClose,
+      volume: Number.isFinite(volume) ? formatLarge(volume) : null,
+      avgVol: null,
+      pe: null,
+      eps: null,
+      high52: null,
+      low52: null,
+      divYield: null,
+      beta: null,
+      cap: null,
+      history: values.map((row) => round(Number(row.close))).filter((n) => n != null),
+    };
+  }
+
+  function rangePoints(range) {
+    switch (range) {
+      case "1D": return 2;
+      case "1W": return 7;
+      case "1M": return 30;
+      case "1Y": return 60;
+      default: return 30;
+    }
+  }
+
+  async function getHistory(symbol, range = "1M") {
+    const normalized = symbol.trim().toUpperCase();
+    const points = rangePoints(range);
+    const data = await timeSeries(normalized, Math.max(points, 60));
+    return mapSeries(normalized, metaFor(normalized), data).history.slice(-points);
+  }
+
+  async function mapWithLimit(items, limit, mapper) {
+    const out = [];
+    for (let i = 0; i < items.length; i += limit) {
+      const batch = await Promise.allSettled(items.slice(i, i + limit).map(mapper));
+      out.push(...batch.filter((r) => r.status === "fulfilled").map((r) => r.value));
+    }
+    return out;
+  }
+
+  async function getTrending() {
+    return DEFAULT_SYMBOLS.map((symbol) => ({ ...metaFor(symbol), price: null, change: null, history: [] }));
+  }
+
+  async function getIndices() {
+    return INDEX_SYMBOLS.map((idx) => ({ name: idx.name, value: null, change: null, history: [] }));
+  }
+
+  async function searchCompanies(query, limit = 8) {
+    const q = query.trim().toLowerCase();
+    if (q.length < 2) return [];
+    const matches = COMPANY_CATALOG
+      .filter((c) => c.symbol.toLowerCase().includes(q) || c.name.toLowerCase().includes(q))
+      .slice(0, limit);
+
+    return matches.map((m) => ({ ...m, price: null, change: null, history: [] }));
+  }
+
+  async function getNews() {
+    return [];
   }
 
   async function getPortfolio() {

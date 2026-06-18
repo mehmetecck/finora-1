@@ -38,7 +38,11 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         listEl.innerHTML = `<div class="text-muted-2 small p-2">Search for a company to load market data.</div>`;
       }
-      if (!activeSymbol) detailEl.innerHTML = Finora.emptyState("Search for a company to see market data.", "bi-search");
+      if (!activeSymbol) {
+        detailEl.innerHTML = FinoraAPI.isConfigured()
+          ? Finora.emptyState("Search for a company to see market data.", "bi-search")
+          : marketConfigState();
+      }
     } else {
       if (!activeSymbol) activeSymbol = companies[0].symbol;
       if (searchEl.value.trim()) {
@@ -147,11 +151,21 @@ document.addEventListener("DOMContentLoaded", () => {
       s = null;
     }
     if (!s) {
-      detailEl.innerHTML = Finora.emptyState(`Market data for ${symbol.toUpperCase()} is unavailable right now.`, "bi-wifi-off");
+      detailEl.innerHTML = FinoraAPI.isConfigured()
+        ? Finora.emptyState(`Real market data for ${symbol.toUpperCase()} is unavailable right now.`, "bi-wifi-off")
+        : marketConfigState();
       return;
     }
     activeSymbol = s.symbol;
     renderDetail(s);
+  }
+
+  function marketConfigState() {
+    return `<div class="text-center text-muted-2 py-5">
+        <i class="bi bi-key d-block mb-2" style="font-size:1.9rem;opacity:.55"></i>
+        <div class="fw-semibold text-white mb-1">Real market data needs an API key</div>
+        <div>Add a free Twelve Data key in <code>js/core/api.js</code> to enable quotes, charts, and history.</div>
+      </div>`;
   }
 
   function renderDetail(s) {
