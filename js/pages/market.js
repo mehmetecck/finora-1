@@ -16,6 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let companies = [];
   let searchTimer = null;
   let searchRun = 0;
+  let detailRun = 0;
 
   init();
 
@@ -24,7 +25,8 @@ document.addEventListener("DOMContentLoaded", () => {
     detailEl.innerHTML = Finora.emptyState("Loading market data...", "bi-hourglass-split");
     searchEl.addEventListener("input", handleSearchInput);
 
-    if (activeSymbol) loadDetail(activeSymbol);
+    const initialSymbol = activeSymbol;
+    if (initialSymbol) loadDetail(initialSymbol);
 
     try {
       companies = await FinoraAPI.getTrending();
@@ -50,10 +52,8 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         renderList(companies);
       }
-      if (activeSymbol) loadDetail(activeSymbol);
+      if (!initialSymbol && activeSymbol) loadDetail(activeSymbol);
     }
-
-    if (activeSymbol && !companies.some((c) => c.symbol === activeSymbol)) loadDetail(activeSymbol);
   }
 
   function handleSearchInput() {
@@ -143,6 +143,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* --------------------------- Detail ----------------------------- */
   async function loadDetail(symbol) {
+    const run = ++detailRun;
     detailEl.innerHTML = Finora.emptyState(`Loading ${symbol.toUpperCase()}...`, "bi-hourglass-split");
     let s;
     try {
@@ -150,6 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch {
       s = null;
     }
+    if (run !== detailRun) return;
     if (!s) {
       detailEl.innerHTML = FinoraAPI.isConfigured()
         ? Finora.emptyState(`Real market data for ${symbol.toUpperCase()} is unavailable right now.`, "bi-wifi-off")
@@ -164,7 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return `<div class="text-center text-muted-2 py-5">
         <i class="bi bi-key d-block mb-2" style="font-size:1.9rem;opacity:.55"></i>
         <div class="fw-semibold text-white mb-1">Real market data needs an API key</div>
-        <div>Add a free Twelve Data key in <code>js/core/api.js</code> to enable quotes, charts, and history.</div>
+        <div>Add Finnhub and Twelve Data keys in <code>js/core/api.js</code> to enable quotes, news, charts, and history.</div>
       </div>`;
   }
 
