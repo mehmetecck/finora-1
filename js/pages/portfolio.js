@@ -73,7 +73,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         return `<tr>
             <td>
               <div class="d-flex align-items-center gap-3">
-                <span class="ticker-avatar sm" style="background:${h.color || Finora.symbolColor(h.symbol)}">${h.symbol}</span>
+                ${Finora.tickerAvatar(h.symbol, { size: "sm", color: h.color })}
                 <div><div class="fw-bold text-white">${h.symbol}</div><div class="text-muted-2 small">${h.name || ""}</div></div>
               </div>
             </td>

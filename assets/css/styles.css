@@ -166,15 +166,125 @@ a:hover { color: var(--brand); }
 .brand-logo {
   width: 34px; height: 34px;
   border-radius: 10px;
-  background: var(--brand-gradient);
   display: inline-flex; align-items: center; justify-content: center;
-  color: #021014; font-weight: 900; font-size: 1.1rem;
-  box-shadow: var(--shadow-brand);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.brand-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 .navbar .nav-link { color: var(--text-secondary); font-weight: 500; padding: 0.5rem 0.9rem !important; border-radius: 8px; }
 .navbar .nav-link:hover, .navbar .nav-link.active { color: var(--text-primary); background: var(--bg-elevated); }
+
+.navbar-finora {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.navbar-start {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+.navbar-finora .navbar-brand { margin-right: 0; }
+.navbar-finora .navbar-toggler {
+  margin-right: 0;
+  padding: 0.35rem 0.55rem;
+  flex-shrink: 0;
+}
+.navbar-finora .navbar-toggler-icon {
+  filter: invert(1) grayscale(1) brightness(1.8);
+}
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.navbar-finora .navbar-collapse { flex-basis: 100%; flex-grow: 1; }
+
+@media (max-width: 991.98px) {
+  .navbar-finora .navbar-start { order: 1; }
+  .navbar-finora .navbar-actions { order: 2; }
+  .navbar-finora .navbar-collapse { order: 3; }
+}
+
+@media (min-width: 992px) {
+  .navbar-finora .navbar-start { order: 1; }
+  .navbar-finora .navbar-collapse {
+    order: 2;
+    flex-basis: auto;
+  }
+  .navbar-finora .navbar-actions { order: 3; }
+}
+
 .navbar-toggler { border-color: var(--border); }
 .navbar-toggler:focus { box-shadow: none; }
+
+.nav-user-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  transition: background var(--transition), border-color var(--transition);
+}
+.nav-user-btn:hover {
+  background: var(--bg-secondary);
+  border-color: var(--brand);
+  color: var(--text-primary);
+}
+.nav-user-btn img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  display: block;
+}
+.nav-user-btn.dropdown-toggle::after { display: none; }
+
+.nav-premium-link {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.35rem 1.45rem 0.35rem 1rem;
+  background: linear-gradient(90deg, #4facfe 0%, #7b61e8 52%, #9733ee 100%);
+  color: #fff;
+  text-decoration: none;
+  border-radius: 999px 0 0 999px;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+  transition: filter var(--transition), transform var(--transition);
+  line-height: 1.15;
+  box-shadow: 0 8px 20px rgba(79, 172, 254, 0.28);
+}
+.nav-premium-link:hover {
+  filter: brightness(1.06);
+  color: #fff;
+  transform: translateY(-1px);
+}
+.nav-premium-link__title {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #fff;
+  white-space: nowrap;
+}
+.nav-premium-link__sub {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.92);
+  white-space: nowrap;
+}
 
 /* ------------------------------- Cards ------------------------------- */
 .card-finora {
@@ -216,7 +326,23 @@ a:hover { color: var(--brand); }
 .form-check-input:focus { box-shadow: 0 0 0 0.2rem rgba(20, 184, 166, 0.2); }
 
 /* ------------------------------ Tables ------------------------------- */
-.table-finora { color: var(--text-secondary); margin: 0; }
+.table-finora {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--text-secondary);
+  --bs-table-border-color: var(--border);
+  --bs-table-striped-bg: rgba(26, 39, 64, 0.45);
+  --bs-table-hover-bg: var(--bg-elevated);
+  --bs-table-active-bg: var(--bg-elevated);
+  color: var(--text-secondary);
+  margin: 0;
+  background: transparent;
+}
+.table-finora > :not(caption) > * > * {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border);
+  box-shadow: none;
+}
 .table-finora thead th {
   color: var(--text-muted);
   font-weight: 600;
@@ -227,9 +353,20 @@ a:hover { color: var(--brand); }
   padding: 1rem;
   background: transparent;
 }
-.table-finora tbody td { border-color: var(--border); padding: 1rem; vertical-align: middle; color: var(--text-secondary); }
+.table-finora tbody td {
+  border-color: var(--border);
+  padding: 1rem;
+  vertical-align: middle;
+  color: var(--text-secondary);
+}
+.table-finora tbody td:first-child { color: var(--text-primary); font-weight: 500; }
 .table-finora tbody tr { transition: background var(--transition); }
-.table-finora tbody tr:hover td { background: var(--bg-elevated); }
+.table-finora tbody tr:hover > * {
+  --bs-table-bg-state: var(--bg-elevated);
+  background-color: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+.table-finora tbody tr:hover td:first-child { color: var(--text-primary); }
 
 /* Stock symbol avatar */
 .ticker-avatar {
@@ -243,6 +380,22 @@ a:hover { color: var(--brand); }
 }
 .ticker-avatar.sm { width: 34px; height: 34px; border-radius: 9px; font-size: 0.68rem; flex: 0 0 auto; }
 .ticker-avatar.lg { width: 54px; height: 54px; border-radius: 14px; font-size: 0.95rem; }
+
+/* Company logo badges */
+.ticker-avatar.has-logo,
+.holding-logo.has-logo {
+  background: #fff;
+  padding: 4px;
+  overflow: hidden;
+}
+.ticker-avatar.has-logo img,
+.holding-logo.has-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: inherit;
+  display: block;
+}
 
 .stock-list-item {
   width: 100%;
@@ -319,12 +472,6 @@ a:hover { color: var(--brand); }
 
 /* ------------------------------ Hero --------------------------------- */
 .hero { position: relative; padding: 6rem 0 4rem; overflow: hidden; }
-.hero-badge {
-  display: inline-flex; align-items: center; gap: 0.5rem;
-  padding: 0.4rem 0.9rem; border-radius: 999px;
-  background: var(--bg-elevated); border: 1px solid var(--border);
-  color: var(--text-secondary); font-size: 0.85rem; font-weight: 500;
-}
 .hero h1 { font-weight: 800; font-size: clamp(2.4rem, 5vw, 4rem); line-height: 1.08; letter-spacing: -0.03em; }
 
 .stat-pill { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.9rem 1.1rem; }

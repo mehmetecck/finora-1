@@ -100,7 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const up = (c.change || 0) >= 0;
         const active = c.symbol === activeSymbol ? "active" : "";
         return `<button class="stock-list-item ${active}" data-symbol="${c.symbol}">
-            <span class="ticker-avatar sm" style="background:${c.color || Finora.symbolColor(c.symbol)}">${c.symbol}</span>
+            ${Finora.tickerAvatar(c.symbol, { size: "sm", color: c.color })}
             <span class="flex-grow-1 text-start min-w-0">
               <span class="d-block fw-semibold text-white text-truncate">${c.symbol}</span>
               <span class="d-block text-muted-2 small text-truncate">${c.name || ""}</span>
@@ -176,7 +176,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="card-finora p-4 mb-4">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
           <div class="d-flex align-items-center gap-3">
-            <span class="ticker-avatar lg" style="background:${s.color || Finora.symbolColor(s.symbol)}">${s.symbol}</span>
+            ${Finora.tickerAvatar(s.symbol, { size: "lg", color: s.color })}
             <div>
               <h4 class="fw-bold mb-0">${s.name}</h4>
               <div class="text-muted-2 small">${s.exchange || ""} - ${s.symbol}${s.sector ? " - " + s.sector : ""}</div>

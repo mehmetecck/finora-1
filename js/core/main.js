@@ -288,13 +288,17 @@ const Finora = (() => {
   }
 
   /* ------------------- Normalized profile object ------------------- */
+  function normalizePlan(plan) {
+    return plan === "Pro" ? "Premium" : (plan || "Free");
+  }
+
   function getProfile() {
     if (!currentUser) return null;
     if (!USE_FIREBASE) {
       const u = currentUser;
       return {
         uid: u.uid, name: u.name, email: u.email, joined: u.joined,
-        plan: u.plan || "Free", balance: u.balance != null ? u.balance : 0,
+        plan: normalizePlan(u.plan), balance: u.balance != null ? u.balance : 0,
         phone: u.phone || "", country: u.country || "", bio: u.bio || "",
       };
     }
@@ -304,7 +308,7 @@ const Finora = (() => {
       name: currentUser.displayName || (currentUser.email || "").split("@")[0],
       email: currentUser.email,
       joined: currentUser.metadata?.creationTime || new Date().toISOString(),
-      plan: extras.plan || "Free",
+      plan: normalizePlan(extras.plan),
       balance: extras.balance != null ? extras.balance : 0,
       phone: extras.phone || "",
       country: extras.country || "",
@@ -395,31 +399,96 @@ const Finora = (() => {
     return `linear-gradient(135deg, ${COLORS[h % COLORS.length]}, ${COLORS[(h >> 3) % COLORS.length]})`;
   }
 
+  // Company logos stored in assets/logos. Maps ticker symbol -> image path.
+  const LOGOS = {
+    AAPL: "assets/logos/Apple.png",
+    MSFT: "assets/logos/Microsoft.png",
+    NVDA: "assets/logos/Nvidia_logo.png",
+    GOOGL: "assets/logos/Google.png",
+    AMZN: "assets/logos/Amazon_logo.png",
+    META: "assets/logos/Meta.png",
+    TSLA: "assets/logos/Tesla.png",
+    AMD: "assets/logos/AMD.png",
+    JPM: "assets/logos/jpm.png",
+    V: "assets/logos/Visa.png",
+    MA: "assets/logos/Mastercard.png",
+    NFLX: "assets/logos/netflix.png",
+    DIS: "assets/logos/Disney.png",
+    KO: "assets/logos/cokewirsindinlidi.png",
+    PEP: "assets/logos/Pepsi.png",
+    WMT: "assets/logos/Walmart.png",
+    COST: "assets/logos/Costco.png",
+    NKE: "assets/logos/nike.png",
+    MCD: "assets/logos/McDonald.png",
+    SBUX: "assets/logos/Starbucks.png",
+    BA: "assets/logos/Boeing.png",
+    CAT: "assets/logos/Caterpillar.png",
+    GE: "assets/logos/ge.png",
+    XOM: "assets/logos/Exxon.png",
+    CVX: "assets/logos/Chevron.png",
+    JNJ: "assets/logos/JNJ.png",
+    PFE: "assets/logos/pfizer.png",
+    UNH: "assets/logos/United.png",
+    HD: "assets/logos/THD.png",
+    ORCL: "assets/logos/Oracle.png",
+    IBM: "assets/logos/IBM.png",
+    INTC: "assets/logos/intel.png",
+    CRM: "assets/logos/Salesforce.png",
+    UBER: "assets/logos/uber.png",
+    ABNB: "assets/logos/airbnb.png",
+    SHOP: "assets/logos/shopify.png",
+  };
+
+  function logoFor(symbol) {
+    return LOGOS[(symbol || "").trim().toUpperCase()] || null;
+  }
+
+  // Returns the markup for a ticker badge: the company logo when available,
+  // otherwise a colored fallback showing the symbol text.
+  function tickerAvatar(symbol, opts = {}) {
+    const { size = "", color, className = "ticker-avatar" } = opts;
+    const sym = (symbol || "").trim().toUpperCase();
+    const cls = [className, size].filter(Boolean).join(" ");
+    const logo = logoFor(sym);
+    if (logo) {
+      return `<span class="${cls} has-logo"><img src="${logo}" alt="${sym}" loading="lazy" onerror="this.parentElement.classList.remove('has-logo');this.parentElement.textContent='${sym}';this.parentElement.style.background='${color || symbolColor(sym)}'"></span>`;
+    }
+    return `<span class="${cls}" style="background:${color || symbolColor(sym)}">${sym}</span>`;
+  }
+
   /* ------------------------- Navbar binding ------------------------ */
+  const USER_ICON = "assets/Icons/user.png";
+
   function renderNavAuth() {
     const slot = document.querySelector("[data-nav-auth]");
     if (!slot) return;
     const profile = getProfile();
+    const premiumLink = `<a href="prosubscription.html" class="nav-premium-link" aria-label="Upgrade to Premium">
+          <span class="nav-premium-link__title">Upgrade now</span>
+          <span class="nav-premium-link__sub">30-day free trial</span>
+        </a>`;
 
     if (profile) {
       slot.innerHTML = `
-        <div class="dropdown">
-          <button class="btn btn-ghost d-flex align-items-center gap-2 dropdown-toggle" data-bs-toggle="dropdown">
-            <span class="ticker-avatar" style="width:30px;height:30px;font-size:.72rem;background:var(--brand-gradient);color:#021014;">${initials(profile.name)}</span>
-            <span class="d-none d-sm-inline">${profile.name.split(" ")[0]}</span>
-          </button>
-          <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark border-finora">
-            <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person me-2"></i>My Profile</a></li>
-            <li><a class="dropdown-item" href="portfolio.html"><i class="bi bi-briefcase me-2"></i>Portfolio</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li><button class="dropdown-item text-bear" data-logout><i class="bi bi-box-arrow-right me-2"></i>Log out</button></li>
-          </ul>
+        <div class="d-flex align-items-center gap-3">
+          <div class="dropdown">
+            <button class="nav-user-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu">
+              <img src="${USER_ICON}" alt="">
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark border-finora">
+              <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person me-2"></i>My Profile</a></li>
+            </ul>
+          </div>
+          ${premiumLink}
         </div>`;
-      slot.querySelector("[data-logout]").addEventListener("click", logout);
     } else {
       slot.innerHTML = `
-        <a href="login.html" class="btn btn-ghost">Log in</a>
-        <a href="login.html?mode=register" class="btn btn-brand">Get started</a>`;
+        <div class="d-flex align-items-center gap-3">
+          <a href="login.html?mode=register" class="nav-user-btn" aria-label="Create account">
+            <img src="${USER_ICON}" alt="">
+          </a>
+          ${premiumLink}
+        </div>`;
     }
   }
 
@@ -448,7 +517,7 @@ const Finora = (() => {
     getProfile, updateProfile, changePassword, deleteAccount,
     requireAuth, mapAuthError, getToken,
     fmtMoney, fmtNumber, initials, toast,
-    emptyState, emptyRow, symbolColor,
+    emptyState, emptyRow, symbolColor, logoFor, tickerAvatar,
     isFirebase: USE_FIREBASE,
   };
 })();

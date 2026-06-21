@@ -81,11 +81,10 @@ document.addEventListener("DOMContentLoaded", () => {
       body.innerHTML = stocks
         .map((s, i) => {
           const up = s.change >= 0;
-          const color = s.color || Finora.symbolColor(s.symbol);
           return `<tr>
               <td>
                 <div class="d-flex align-items-center gap-3">
-                  <span class="ticker-avatar" style="background:${color}">${s.symbol}</span>
+                  ${Finora.tickerAvatar(s.symbol, { color: s.color })}
                   <div>
                     <div class="fw-bold text-white">${s.symbol}</div>
                     <div class="text-muted-2 small">${s.name || ""}</div>
@@ -130,8 +129,17 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!s) throw new Error("no stock");
 
       const up = s.change >= 0;
-      document.getElementById("heroAvatar").textContent = s.symbol;
-      document.getElementById("heroAvatar").style.background = s.color || Finora.symbolColor(s.symbol);
+      const heroAvatar = document.getElementById("heroAvatar");
+      const heroLogo = Finora.logoFor(s.symbol);
+      if (heroLogo) {
+        heroAvatar.classList.add("has-logo");
+        heroAvatar.style.background = "";
+        heroAvatar.innerHTML = `<img src="${heroLogo}" alt="${s.symbol}" loading="lazy">`;
+      } else {
+        heroAvatar.classList.remove("has-logo");
+        heroAvatar.textContent = s.symbol;
+        heroAvatar.style.background = s.color || Finora.symbolColor(s.symbol);
+      }
       document.getElementById("heroName").textContent = s.name;
       document.getElementById("heroMeta").textContent = `${s.exchange || ""} · ${s.symbol}`;
       document.getElementById("heroPrice").textContent = Finora.fmtMoney(s.price);

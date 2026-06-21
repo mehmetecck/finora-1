@@ -67,10 +67,6 @@ const FinoraAPI = (() => {
     company("UBER", "Uber Technologies, Inc.", "NYSE", "Technology"),
     company("ABNB", "Airbnb, Inc.", "NASDAQ", "Consumer Cyclical"),
     company("SHOP", "Shopify Inc.", "NYSE", "Technology"),
-    company("SPY", "SPDR S&P 500 ETF Trust", "NYSE Arca", "ETF"),
-    company("QQQ", "Invesco QQQ Trust", "NASDAQ", "ETF"),
-    company("DIA", "SPDR Dow Jones Industrial Average ETF", "NYSE Arca", "ETF"),
-    company("IWM", "iShares Russell 2000 ETF", "NYSE Arca", "ETF"),
   ];
 
   const cache = new Map();

@@ -1,5 +1,5 @@
 /* =====================================================================
-   Finora — Pricing / Go Pro page
+   Finora — Pricing / Premium page
    ===================================================================== */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -8,19 +8,22 @@ document.addEventListener("DOMContentLoaded", () => {
       id: "Free", name: "Free", monthly: 0,
       tagline: "For getting started", featured: false,
       cta: "Your current plan",
-      features: ["Real-time quotes", "Basic charts", "1 watchlist", "Community support"],
+      features: ["Real-time quotes", "Basic charts", "1 watchlist"],
     },
     {
-      id: "Pro", name: "Pro", monthly: 14.99,
-      tagline: "For active traders", featured: true,
-      cta: "Upgrade to Pro",
-      features: ["Everything in Free", "Advanced charts & indicators", "Unlimited watchlists", "AI insights & signals", "Level 2 market data", "Priority support"],
-    },
-    {
-      id: "Premium", name: "Premium", monthly: 29.99,
-      tagline: "For professionals", featured: false,
+      id: "Premium", name: "Premium", monthly: 14.99,
+      tagline: "For professionals", featured: true,
       cta: "Upgrade to Premium",
-      features: ["Everything in Pro", "Portfolio automation", "Options analytics", "API access", "Dedicated account manager"],
+      features: [
+        "Everything in Free",
+        "Advanced charts & indicators",
+        "Unlimited watchlists",
+        "AI insights & signals",
+        "Level 2 market data",
+        "Portfolio automation",
+        "Options analytics",
+        "API access",
+      ],
     },
   ];
 
@@ -43,7 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const p = priceFor(plan);
         const isCurrent = plan.id === current;
         const cta = isCurrent ? "Current plan" : plan.cta;
-        return `<div class="col-md-6 col-lg-4">
+        return `<div class="col-md-6 col-lg-5">
             <div class="card-finora plan-card h-100 p-4 ${plan.featured ? "featured" : ""}">
               ${plan.featured ? `<span class="badge badge-premium plan-badge">Most popular</span>` : ""}
               <h4 class="fw-bold mb-1">${plan.name}</h4>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Finora — Go Pro</title>
+  <title>Finora — Premium</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -17,23 +17,23 @@
 
   <!-- ============================ Navbar ============================ -->
   <nav class="navbar navbar-expand-lg sticky-top">
-    <div class="container">
-      <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
-        <span class="brand-logo">F</span> Finora
-      </a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
-        <span class="navbar-toggler-icon"></span>
-      </button>
+    <div class="container navbar-finora">
+      <div class="navbar-start">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+          <span class="brand-logo"><img src="assets/logos/finora.png" alt="Finora"></span> Finora
+        </a>
+      </div>
       <div class="collapse navbar-collapse" id="nav">
         <ul class="navbar-nav mx-auto gap-1">
           <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
           <li class="nav-item"><a class="nav-link" href="market.html">Market</a></li>
           <li class="nav-item"><a class="nav-link" href="portfolio.html">Portfolio</a></li>
-          <li class="nav-item"><a class="nav-link" href="prosubscription.html">Pro</a></li>
-          <li class="nav-item"><a class="nav-link" href="profile.html">Profile</a></li>
         </ul>
-        <div class="d-flex align-items-center gap-2" data-nav-auth></div>
       </div>
+      <div class="navbar-actions" data-nav-auth></div>
     </div>
   </nav>
 
@@ -41,9 +41,9 @@
     <!-- ============================= Hero =========================== -->
     <div class="text-center mb-5">
       <span class="badge badge-premium rounded-pill px-3 py-2 mb-3"><i class="bi bi-stars me-1"></i>Finora Premium</span>
-      <h1 class="fw-bold mb-2">Upgrade to <span class="gradient-text">Pro</span></h1>
+      <h1 class="fw-bold mb-2">Upgrade to <span class="gradient-text">Premium</span></h1>
       <p class="text-secondary-2 fs-5 mx-auto" style="max-width:560px">
-        Unlock advanced analytics, AI insights and unlimited watchlists. Trade like a professional.
+        Unlock advanced analytics, Trade like a professional.
       </p>
 
       <!-- Billing toggle -->
@@ -68,19 +68,17 @@
             <tr>
               <th>Feature</th>
               <th class="text-center">Free</th>
-              <th class="text-center">Pro</th>
               <th class="text-center">Premium</th>
             </tr>
           </thead>
           <tbody>
-            <tr><td>Real-time quotes</td><td class="text-center"><i class="bi bi-check-lg text-bull"></i></td><td class="text-center"><i class="bi bi-check-lg text-bull"></i></td><td class="text-center"><i class="bi bi-check-lg text-bull"></i></td></tr>
-            <tr><td>Watchlists</td><td class="text-center">1</td><td class="text-center">Unlimited</td><td class="text-center">Unlimited</td></tr>
-            <tr><td>Advanced charts &amp; indicators</td><td class="text-center"><i class="bi bi-x-lg text-muted-2"></i></td><td class="text-center"><i class="bi bi-check-lg text-bull"></i></td><td class="text-center"><i class="bi bi-check-lg text-bull"></i></td></tr>
-            <tr><td>AI insights &amp; signals</td><td class="text-center"><i class="bi bi-x-lg text-muted-2"></i></td><td class="text-center"><i class="bi bi-check-lg text-bull"></i></td><td class="text-center"><i class="bi bi-check-lg text-bull"></i></td></tr>
-            <tr><td>Level 2 market data</td><td class="text-center"><i class="bi bi-x-lg text-muted-2"></i></td><td class="text-center"><i class="bi bi-check-lg text-bull"></i></td><td class="text-center"><i class="bi bi-check-lg text-bull"></i></td></tr>
-            <tr><td>Portfolio automation</td><td class="text-center"><i class="bi bi-x-lg text-muted-2"></i></td><td class="text-center"><i class="bi bi-x-lg text-muted-2"></i></td><td class="text-center"><i class="bi bi-check-lg text-bull"></i></td></tr>
-            <tr><td>API access</td><td class="text-center"><i class="bi bi-x-lg text-muted-2"></i></td><td class="text-center"><i class="bi bi-x-lg text-muted-2"></i></td><td class="text-center"><i class="bi bi-check-lg text-bull"></i></td></tr>
-            <tr><td>Support</td><td class="text-center">Community</td><td class="text-center">Priority</td><td class="text-center">Dedicated</td></tr>
+            <tr><td>Real-time quotes</td><td class="text-center"><i class="bi bi-check-lg text-bull"></i></td><td class="text-center"><i class="bi bi-check-lg text-bull"></i></td></tr>
+            <tr><td>Watchlists</td><td class="text-center">1</td><td class="text-center">Unlimited</td></tr>
+            <tr><td>Advanced charts &amp; indicators</td><td class="text-center"><i class="bi bi-x-lg text-muted-2"></i></td><td class="text-center"><i class="bi bi-check-lg text-bull"></i></td></tr>
+            <tr><td>AI insights &amp; signals</td><td class="text-center"><i class="bi bi-x-lg text-muted-2"></i></td><td class="text-center"><i class="bi bi-check-lg text-bull"></i></td></tr>
+            <tr><td>Level 2 market data</td><td class="text-center"><i class="bi bi-x-lg text-muted-2"></i></td><td class="text-center"><i class="bi bi-check-lg text-bull"></i></td></tr>
+            <tr><td>Portfolio automation</td><td class="text-center"><i class="bi bi-x-lg text-muted-2"></i></td><td class="text-center"><i class="bi bi-check-lg text-bull"></i></td></tr>
+            <tr><td>API access</td><td class="text-center"><i class="bi bi-x-lg text-muted-2"></i></td><td class="text-center"><i class="bi bi-check-lg text-bull"></i></td></tr>
           </tbody>
         </table>
       </div>
@@ -97,7 +95,7 @@
           </div>
           <div class="accordion-item bg-transparent border-finora mb-2">
             <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q2">Is there a free trial?</button></h2>
-            <div id="q2" class="accordion-collapse collapse" data-bs-parent="#faq"><div class="accordion-body text-secondary-2">Pro comes with a 14-day free trial. You won't be charged until the trial ends.</div></div>
+            <div id="q2" class="accordion-collapse collapse" data-bs-parent="#faq"><div class="accordion-body text-secondary-2">Premium comes with a 14-day free trial. You won't be charged until the trial ends.</div></div>
           </div>
           <div class="accordion-item bg-transparent border-finora mb-2">
             <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q3">What payment methods do you accept?</button></h2>
