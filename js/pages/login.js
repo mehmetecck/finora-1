@@ -269,9 +269,4 @@ document.addEventListener("DOMContentLoaded", async () => {
       setTimeout(() => (window.location.href = next), 700);
     });
   }
-
-  /* ------------------------- Demo socials ------------------------- */
-  document.querySelectorAll("[data-demo-social]").forEach((btn) => {
-    btn.addEventListener("click", () => Finora.toast("This login option is not available in this demo.", "info"));
-  });
 });
