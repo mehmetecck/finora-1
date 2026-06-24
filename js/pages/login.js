@@ -7,6 +7,25 @@ document.addEventListener("DOMContentLoaded", async function() {
   var requestedNext = params.get("next") || "home.html";
   var next = /^(https?:)?\/\//i.test(requestedNext) ? "home.html" : requestedNext;
 
+  if (Finora.isEmailLoginLink(window.location.href)) {
+    var emailLinkResult = await Finora.completeEmailLoginLink(null, window.location.href);
+    if (!emailLinkResult.ok && emailLinkResult.code === "auth/missing-email") {
+      var emailForLink = window.prompt("Please confirm the email address you used for this login link:");
+      if (emailForLink) {
+        emailLinkResult = await Finora.completeEmailLoginLink(emailForLink.trim(), window.location.href);
+      }
+    }
+
+    if (emailLinkResult.ok) {
+      Finora.toast("Signed in with email link.", "success");
+      setTimeout(function() { window.location.href = next; }, 700);
+      return;
+    }
+
+    Finora.toast(emailLinkResult.error, "error");
+    window.history.replaceState({}, document.title, "login.html");
+  }
+
   // If already logged in, go straight to profile.
   var existing = await Finora.authReady;
   if (existing) {
@@ -56,6 +75,11 @@ document.addEventListener("DOMContentLoaded", async function() {
   if (params.get("registered") === "1") {
     setMode("login");
     Finora.toast("Account created! Please log in to continue.", "success");
+  }
+
+  if (params.get("verified") === "1") {
+    setMode("login");
+    Finora.toast("Email confirmed. You can log in now.", "success");
   }
 
   /* ----------------------- Show / hide password ------------------- */
@@ -213,6 +237,28 @@ document.addEventListener("DOMContentLoaded", async function() {
     });
   }
 
+  var emailLinkBtn = document.querySelector("[data-email-link-login]");
+  if (emailLinkBtn) {
+    emailLinkBtn.addEventListener("click", async function() {
+      clearErrors(loginForm);
+      var email = loginForm.email.value.trim();
+      if (!isEmail(email)) {
+        fieldError(loginForm.email, "Enter a valid email address so we can send your login link.");
+        return;
+      }
+
+      setLoading(emailLinkBtn, true, "Sending link...");
+      var res = await Finora.sendEmailLoginLink({ email: email, next: next });
+      setLoading(emailLinkBtn, false);
+      if (!res.ok) {
+        fieldError(loginForm.email, res.error);
+        Finora.toast(res.error, "error");
+        return;
+      }
+      Finora.toast("Login link sent. Check your inbox.", "success");
+    });
+  }
+
   /* ----------------------------- Login ---------------------------- */
   loginForm.addEventListener("submit", async function(e) {
     e.preventDefault();
@@ -280,8 +326,14 @@ document.addEventListener("DOMContentLoaded", async function() {
       Finora.toast(res.error, "error");
       return;
     }
-    Finora.toast("Account created! Welcome to Finora.", "success");
-    setTimeout(function() { window.location.href = "home.html"; }, 700);
+    if (res.verificationEmailSent) {
+      Finora.toast("Account created. Check your inbox to confirm your email.", "success");
+    } else if (res.verificationEmailError) {
+      Finora.toast("Account created, but the confirmation email could not be sent: " + res.verificationEmailError, "error");
+    } else {
+      Finora.toast("Account created! Welcome to Finora.", "success");
+    }
+    setTimeout(function() { window.location.href = "home.html"; }, 1200);
   });
 
   /* ------------------------- Google login ------------------------- */
