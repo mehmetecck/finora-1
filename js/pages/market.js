@@ -719,8 +719,6 @@ document.addEventListener("DOMContentLoaded", function() {
           );
           return;
         }
-
-        Finora.toast("Trading is not connected to a broker API yet (" + action + " " + s.symbol + ").", "info");
       });
     });
     syncWatchButton(s.symbol);

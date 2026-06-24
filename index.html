@@ -50,11 +50,17 @@
             Track thousands of stocks, build your portfolio and execute trades — all
             from one beautifully simple dashboard built for modern investors.
           </p>
-          <div class="d-flex flex-wrap gap-3 mb-4 justify-content-center">
-            <a href="login.html?mode=register" class="btn btn-brand btn-lg px-4">
+          <div class="landing-hero-ctas mb-4" data-landing-cta="guest-actions">
+            <a href="login.html?mode=register" class="btn btn-brand btn-lg px-4" data-landing-cta="register">
               Start investing <i class="bi bi-arrow-right ms-1"></i>
             </a>
-            <a href="login.html?next=home.html" class="btn btn-ghost btn-lg px-4">
+            <div class="landing-cta-or text-muted-2">or</div>
+            <a href="prosubscription.html" class="btn btn-premium btn-lg px-4" data-landing-cta="premium">
+              Start with premium
+            </a>
+          </div>
+          <div class="landing-hero-ctas mb-4 d-none" data-landing-cta="signed-actions">
+            <a href="home.html" class="btn btn-ghost btn-lg px-4" data-landing-cta="dashboard">
               <i class="bi bi-grid me-1"></i> Open dashboard
             </a>
           </div>
@@ -117,19 +123,6 @@
             <h5 class="fw-bold">Trade anywhere</h5>
             <p class="text-muted-2 mb-0">A fully responsive experience across desktop, tablet and mobile.</p>
           </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="py-5">
-    <div class="container">
-      <div class="card-elevated p-5 text-center position-relative overflow-hidden">
-        <div class="position-relative">
-          <span class="badge badge-premium rounded-pill px-3 py-2 mb-3"><i class="bi bi-stars me-1"></i> Finora Premium</span>
-          <h2 class="section-title mb-2">Ready to grow your wealth?</h2>
-          <p class="text-secondary-2 mb-4">Join millions of investors. Open your free account in under two minutes.</p>
-          <a href="login.html?mode=register" class="btn btn-premium btn-lg px-5">Create free account</a>
         </div>
       </div>
     </div>

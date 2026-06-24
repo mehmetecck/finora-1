@@ -559,38 +559,58 @@ var Finora = (function() {
     });
   }
 
+  function navPremiumMarkup() {
+    return `<a href="prosubscription.html" class="nav-premium-link" aria-label="Upgrade to Premium">
+          <span class="nav-premium-link__title">Upgrade now</span>
+          <span class="nav-premium-link__sub">30-day free trial</span>
+        </a>`;
+  }
+
+  function signedInNavMarkup(pending) {
+    var pendingCls = pending ? " nav-auth-pending" : "";
+    var btnAttrs = pending
+      ? ' class="nav-user-btn" type="button" tabindex="-1" aria-hidden="true"'
+      : ' class="nav-user-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu"';
+    var menu = pending ? "" : `
+            <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark border-finora">
+              <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person me-2"></i>My Profile</a></li>
+              <li><a class="dropdown-item" href="watchlist.html"><i class="bi bi-star me-2"></i>My Watchlist</a></li>
+            </ul>`;
+    return `<div class="d-flex align-items-center gap-3${pendingCls}">
+          <div class="dropdown">
+            <button${btnAttrs}>
+              <i class="bi bi-person-fill" aria-hidden="true"></i>
+            </button>${menu}
+          </div>
+          ${navPremiumMarkup()}
+        </div>`;
+  }
+
+  function renderNavAuthPending() {
+    var slot = document.querySelector("[data-nav-auth]");
+    if (!slot || slot.dataset.navAuthState === "ready") return;
+    slot.innerHTML = signedInNavMarkup(true);
+    slot.dataset.navAuthState = "pending";
+  }
+
   function renderNavAuth() {
     var slot = document.querySelector("[data-nav-auth]");
     if (!slot) return;
     var profile = getProfile();
-    var premiumLink = `<a href="prosubscription.html" class="nav-premium-link" aria-label="Upgrade to Premium">
-          <span class="nav-premium-link__title">Upgrade now</span>
-          <span class="nav-premium-link__sub">30-day free trial</span>
-        </a>`;
 
     if (profile) {
-      slot.innerHTML = `
-        <div class="d-flex align-items-center gap-3">
-          <div class="dropdown">
-            <button class="nav-user-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu">
-              <i class="bi bi-person-fill" aria-hidden="true"></i>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark border-finora">
-              <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person me-2"></i>My Profile</a></li>
-              <li><a class="dropdown-item" href="watchlist.html"><i class="bi bi-star me-2"></i>My Watchlist</a></li>
-            </ul>
-          </div>
-          ${premiumLink}
-        </div>`;
+      slot.innerHTML = signedInNavMarkup(false);
     } else {
       slot.innerHTML = `
         <div class="d-flex align-items-center gap-3">
           <a href="login.html?mode=register" class="nav-user-btn" aria-label="Create account">
             <i class="bi bi-person-fill" aria-hidden="true"></i>
           </a>
-          ${premiumLink}
+          ${navPremiumMarkup()}
         </div>`;
     }
+    slot.dataset.navAuthState = "ready";
+    renderLandingCtas();
   }
 
   /* Protect pages that require auth (async — waits for Firebase). */
@@ -608,7 +628,7 @@ var Finora = (function() {
   }
 
   function isPublicPage(path) {
-    return path === "index.html" || path === "login.html" || path === "";
+    return path === "index.html" || path === "login.html" || path === "prosubscription.html" || path === "";
   }
 
   async function guardRoutes() {
@@ -626,10 +646,23 @@ var Finora = (function() {
     return true;
   }
 
+  function renderLandingCtas() {
+    var path = currentPath();
+    if (path !== "index.html" && path !== "") return;
+    var guestActions = document.querySelector("[data-landing-cta=\"guest-actions\"]");
+    var signedActions = document.querySelector("[data-landing-cta=\"signed-actions\"]");
+    if (!guestActions || !signedActions) return;
+    var signedIn = !!getProfile();
+    guestActions.classList.toggle("d-none", signedIn);
+    signedActions.classList.toggle("d-none", !signedIn);
+  }
+
   async function init() {
+    renderNavAuthPending();
     var allowed = await guardRoutes();
     if (!allowed) return;
     renderNavAuth();
+    renderLandingCtas();
     bindDropdownLinks();
     var path = currentPath();
     document.querySelectorAll(".navbar .nav-link").forEach(function(link) {

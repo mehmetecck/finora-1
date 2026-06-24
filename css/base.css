@@ -281,6 +281,11 @@ a:hover { color: var(--brand); }
   white-space: nowrap;
 }
 
+.nav-auth-pending {
+  pointer-events: none;
+  user-select: none;
+}
+
 .card-finora {
   background: var(--bg-secondary);
   border: 1px solid var(--border);

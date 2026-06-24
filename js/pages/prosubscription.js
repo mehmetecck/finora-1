@@ -76,6 +76,11 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   async function buy(planId) {
+    var user = Finora.getProfile();
+    if (!user) {
+      window.location.href = "login.html?next=prosubscription.html";
+      return;
+    }
     await Finora.updateProfile({ plan: planId });
     Finora.toast("You're now on the " + planId + " plan! (demo)", "success");
     render();
