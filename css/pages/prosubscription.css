@@ -1,0 +1,19 @@
+/* =====================================================================
+   Finora — Premium / pricing page (prosubscription.html)
+   ===================================================================== */
+
+.plan-card { position: relative; }
+.plan-card.featured { border-color: var(--brand); box-shadow: var(--shadow-brand); }
+.plan-badge { position: absolute; top: -13px; right: 18px; }
+
+.accordion-button {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-weight: 600;
+  border-radius: var(--radius-sm) !important;
+}
+.accordion-button:not(.collapsed) { background: var(--bg-elevated); color: var(--text-primary); box-shadow: none; }
+.accordion-button:focus { box-shadow: 0 0 0 0.2rem rgba(20, 184, 166, 0.2); border-color: var(--brand); }
+.accordion-button::after { filter: invert(0.8) sepia(1) saturate(3) hue-rotate(130deg); }
+.accordion-body { background: var(--bg-secondary); color: var(--text-secondary); }
+.accordion-item { overflow: hidden; border-radius: var(--radius-sm) !important; }

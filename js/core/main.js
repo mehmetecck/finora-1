@@ -13,23 +13,24 @@
    Profile extras (plan, balance, phone, country, bio) live in localStorage.
    ===================================================================== */
 
-const Finora = (() => {
-  const USE_FIREBASE = !!window.FIREBASE_CONFIGURED;
-  const auth = USE_FIREBASE ? window.firebaseAuth : null;
+var Finora = (function() {
+  var USE_FIREBASE = !!window.FIREBASE_CONFIGURED;
+  var auth = USE_FIREBASE ? window.firebaseAuth : null;
 
-  const EXTRAS_KEY = "finora_profile_extras";
-  const LOCAL_USERS = "finora_local_users";
-  const LOCAL_SESSION = "finora_local_session";
+  var EXTRAS_KEY = "finora_profile_extras";
+  var LOCAL_USERS = "finora_local_users";
+  var LOCAL_SESSION = "finora_local_session";
 
   /* --------------------- Profile extras (local) -------------------- */
-  const allExtras = () => JSON.parse(localStorage.getItem(EXTRAS_KEY) || "{}");
-  const getExtras = (uid) => allExtras()[uid] || {};
-  const setExtras = (uid, patch) => {
-    const all = allExtras();
-    all[uid] = { ...(all[uid] || {}), ...patch };
+  function allExtras() { return JSON.parse(localStorage.getItem(EXTRAS_KEY) || "{}"); }
+  function getExtras(uid) { return allExtras()[uid] || {}; }
+  function setExtras(uid, patch) {
+    var all = allExtras();
+    var existing = all[uid] || {};
+    all[uid] = Object.assign({}, existing, patch);
     localStorage.setItem(EXTRAS_KEY, JSON.stringify(all));
     return all[uid];
-  };
+  }
 
   /* ---------------------- Friendly error text ---------------------- */
   function mapAuthError(code) {
@@ -62,26 +63,28 @@ const Finora = (() => {
   /* ===================================================================
      Local demo auth backend (localStorage)
      =================================================================== */
-  const Local = (() => {
-    const getUsers = () => JSON.parse(localStorage.getItem(LOCAL_USERS) || "[]");
-    const saveUsers = (u) => localStorage.setItem(LOCAL_USERS, JSON.stringify(u));
-    const getSessionUid = () =>
-      JSON.parse(sessionStorage.getItem(LOCAL_SESSION) || localStorage.getItem(LOCAL_SESSION) || "null");
-    const setSessionUid = (uid, remember = true) => {
-      const activeStore = remember ? localStorage : sessionStorage;
-      const inactiveStore = remember ? sessionStorage : localStorage;
+  var Local = (function() {
+    function getUsers() { return JSON.parse(localStorage.getItem(LOCAL_USERS) || "[]"); }
+    function saveUsers(u) { localStorage.setItem(LOCAL_USERS, JSON.stringify(u)); }
+    function getSessionUid() {
+      return JSON.parse(sessionStorage.getItem(LOCAL_SESSION) || localStorage.getItem(LOCAL_SESSION) || "null");
+    }
+    function setSessionUid(uid, remember) {
+      if (remember === undefined) remember = true;
+      var activeStore = remember ? localStorage : sessionStorage;
+      var inactiveStore = remember ? sessionStorage : localStorage;
       inactiveStore.removeItem(LOCAL_SESSION);
       activeStore.setItem(LOCAL_SESSION, JSON.stringify(uid));
-    };
-    const clearSession = () => {
+    }
+    function clearSession() {
       localStorage.removeItem(LOCAL_SESSION);
       sessionStorage.removeItem(LOCAL_SESSION);
-    };
+    }
 
     // Seed a ready-to-use test account once.
     (function seed() {
-      const users = getUsers();
-      if (!users.some((u) => u.email === "test@finora.com")) {
+      var users = getUsers();
+      if (!users.some(function(u) { return u.email === "test@finora.com"; })) {
         users.push({
           uid: "local-test", name: "Test User", email: "test@finora.com",
           password: "test1234", plan: "Free", balance: 0,
@@ -91,22 +94,25 @@ const Finora = (() => {
       }
     })();
 
-    const current = () => {
-      const uid = getSessionUid();
+    function current() {
+      var uid = getSessionUid();
       if (!uid) return null;
-      return getUsers().find((u) => u.uid === uid) || null;
-    };
+      return getUsers().find(function(u) { return u.uid === uid; }) || null;
+    }
 
-    function register({ name, email, password }) {
-      const users = getUsers();
-      if (users.some((u) => u.email.toLowerCase() === email.toLowerCase())) {
+    function register(opts) {
+      var name = opts.name;
+      var email = opts.email;
+      var password = opts.password;
+      var users = getUsers();
+      if (users.some(function(u) { return u.email.toLowerCase() === email.toLowerCase(); })) {
         return { ok: false, code: "auth/email-already-in-use", error: mapAuthError("auth/email-already-in-use") };
       }
       if (!password || password.length < 6) {
         return { ok: false, code: "auth/weak-password", error: mapAuthError("auth/weak-password") };
       }
       users.push({
-        uid: "local-" + Date.now(), name, email, password,
+        uid: "local-" + Date.now(), name: name, email: email, password: password,
         plan: "Free", balance: 0, joined: new Date().toISOString(),
       });
       saveUsers(users);
@@ -114,25 +120,30 @@ const Finora = (() => {
       return { ok: true };
     }
 
-    function login({ email, password, remember = true }) {
-      const user = getUsers().find((u) => u.email.toLowerCase() === email.toLowerCase());
+    function login(opts) {
+      var email = opts.email;
+      var password = opts.password;
+      var remember = opts.remember !== undefined ? opts.remember : true;
+      var user = getUsers().find(function(u) { return u.email.toLowerCase() === email.toLowerCase(); });
       if (!user || user.password !== password) {
         return { ok: false, code: "auth/invalid-credential", error: mapAuthError("auth/invalid-credential") };
       }
       setSessionUid(user.uid, remember);
-      return { ok: true, user };
+      return { ok: true, user: user };
     }
 
-    function loginWithGoogle({ remember = true } = {}) {
-      const users = getUsers();
-      let user = users.find((u) => u.email === "google.user@gmail.com");
+    function loginWithGoogle(opts) {
+      if (!opts) opts = {};
+      var remember = opts.remember !== undefined ? opts.remember : true;
+      var users = getUsers();
+      var user = users.find(function(u) { return u.email === "google.user@gmail.com"; });
       if (!user) {
         user = { uid: "local-google", name: "Google User", email: "google.user@gmail.com", password: null, plan: "Free", balance: 0, joined: new Date().toISOString() };
         users.push(user);
         saveUsers(users);
       }
       setSessionUid(user.uid, remember);
-      return Promise.resolve({ ok: true, user });
+      return Promise.resolve({ ok: true, user: user });
     }
 
     function resetPassword(email) {
@@ -141,47 +152,48 @@ const Finora = (() => {
     }
 
     function updateUser(patch) {
-      const users = getUsers();
-      const i = users.findIndex((u) => u.uid === getSessionUid());
+      var users = getUsers();
+      var i = users.findIndex(function(u) { return u.uid === getSessionUid(); });
       if (i === -1) return null;
-      users[i] = { ...users[i], ...patch };
+      users[i] = Object.assign({}, users[i], patch);
       saveUsers(users);
       return users[i];
     }
 
     function changePassword(currentPassword, newPassword) {
-      const user = current();
+      var user = current();
       if (!user || user.password !== currentPassword) {
-        const e = new Error("wrong password"); e.code = "local/wrong-password"; throw e;
+        var e = new Error("wrong password"); e.code = "local/wrong-password"; throw e;
       }
       updateUser({ password: newPassword });
     }
 
     function deleteAccount(currentPassword) {
-      const user = current();
+      var user = current();
       if (!user || (user.password !== null && user.password !== currentPassword)) {
-        const e = new Error("wrong password"); e.code = "local/wrong-password"; throw e;
+        var e = new Error("wrong password"); e.code = "local/wrong-password"; throw e;
       }
-      saveUsers(getUsers().filter((u) => u.uid !== user.uid));
+      saveUsers(getUsers().filter(function(u) { return u.uid !== user.uid; }));
       clearSession();
     }
 
-    return { current, register, login, loginWithGoogle, resetPassword, updateUser, changePassword, deleteAccount, clearSession };
+    return { current: current, register: register, login: login, loginWithGoogle: loginWithGoogle, resetPassword: resetPassword, updateUser: updateUser, changePassword: changePassword, deleteAccount: deleteAccount, clearSession: clearSession };
   })();
 
   /* ------------------------- Auth readiness ------------------------ */
-  let currentUser = null;
-  let resolveReady;
-  const authReady = new Promise((resolve) => (resolveReady = resolve));
+  var currentUser = null;
+  var resolveReady;
+  var authReady = new Promise(function(resolve) { resolveReady = resolve; });
 
   /* ----------------- Session / authentication token ----------------
      `idToken` is the credential used to authenticate requests to the
      backend / market data API. With Firebase it's a JWT issued on login
      and refreshed automatically; in local demo mode it's a stand-in id.
      ----------------------------------------------------------------- */
-  let idToken = null;
+  var idToken = null;
 
-  async function captureToken(forceRefresh = false) {
+  async function captureToken(forceRefresh) {
+    if (forceRefresh === undefined) forceRefresh = false;
     if (!currentUser) { idToken = null; return null; }
     if (USE_FIREBASE) {
       idToken = await currentUser.getIdToken(forceRefresh); // capture Firebase ID token
@@ -191,20 +203,18 @@ const Finora = (() => {
     return idToken;
   }
 
-  // Returns a valid token, refreshing it if needed (use this in API calls).
-  function getToken() { return captureToken(); }
-
-  async function setAuthPersistence(remember = true) {
+  async function setAuthPersistence(remember) {
+    if (remember === undefined) remember = true;
     if (!USE_FIREBASE) return;
-    const persistence = remember
+    var persistence = remember
       ? firebase.auth.Auth.Persistence.LOCAL
       : firebase.auth.Auth.Persistence.SESSION;
     await auth.setPersistence(persistence);
   }
 
   if (USE_FIREBASE) {
-    let firstFired = false;
-    auth.onAuthStateChanged(async (user) => {
+    var firstFired = false;
+    auth.onAuthStateChanged(async function(user) {
       currentUser = user;
       await captureToken(); // start the session: grab the token for this user
       if (!firstFired) { firstFired = true; resolveReady(user); }
@@ -217,10 +227,13 @@ const Finora = (() => {
   }
 
   /* ------------------------------ Auth ----------------------------- */
-  async function register({ name, email, password }) {
-    if (!USE_FIREBASE) return Local.register({ name, email, password });
+  async function register(opts) {
+    var name = opts.name;
+    var email = opts.email;
+    var password = opts.password;
+    if (!USE_FIREBASE) return Local.register({ name: name, email: email, password: password });
     try {
-      const cred = await auth.createUserWithEmailAndPassword(email, password);
+      var cred = await auth.createUserWithEmailAndPassword(email, password);
       if (name) await cred.user.updateProfile({ displayName: name });
       setExtras(cred.user.uid, { plan: "Free", balance: 0 });
       await auth.signOut();
@@ -230,15 +243,18 @@ const Finora = (() => {
     }
   }
 
-  async function login({ email, password, remember = true }) {
+  async function login(opts) {
+    var email = opts.email;
+    var password = opts.password;
+    var remember = opts.remember !== undefined ? opts.remember : true;
     if (!USE_FIREBASE) {
-      const res = Local.login({ email, password, remember });
+      var res = Local.login({ email: email, password: password, remember: remember });
       if (res.ok) { currentUser = res.user; await captureToken(); }
       return res;
     }
     try {
       await setAuthPersistence(remember);
-      const cred = await auth.signInWithEmailAndPassword(email, password);
+      var cred = await auth.signInWithEmailAndPassword(email, password);
       currentUser = cred.user;
       await captureToken(); // capture the auth token & start the session
       return { ok: true, user: cred.user, token: idToken };
@@ -247,18 +263,20 @@ const Finora = (() => {
     }
   }
 
-  async function loginWithGoogle({ remember = true } = {}) {
+  async function loginWithGoogle(opts) {
+    if (!opts) opts = {};
+    var remember = opts.remember !== undefined ? opts.remember : true;
     if (!USE_FIREBASE) {
-      const res = await Local.loginWithGoogle({ remember });
+      var res = await Local.loginWithGoogle({ remember: remember });
       if (res.ok) { currentUser = res.user; await captureToken(); }
       return res;
     }
     try {
       await setAuthPersistence(remember);
-      const provider = new firebase.auth.GoogleAuthProvider();
+      var provider = new firebase.auth.GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
-      const cred = await auth.signInWithPopup(provider);
-      const extras = getExtras(cred.user.uid);
+      var cred = await auth.signInWithPopup(provider);
+      var extras = getExtras(cred.user.uid);
       if (!extras.plan) setExtras(cred.user.uid, { plan: "Free", balance: 0 });
       currentUser = cred.user;
       await captureToken(); // capture the auth token & start the session
@@ -281,7 +299,7 @@ const Finora = (() => {
   }
 
   function logout() {
-    const go = () => (window.location.href = "index.html");
+    function go() { window.location.href = "index.html"; }
     idToken = null; // end the session
     if (!USE_FIREBASE) { Local.clearSession(); currentUser = null; go(); return; }
     auth.signOut().finally(go);
@@ -295,19 +313,21 @@ const Finora = (() => {
   function getProfile() {
     if (!currentUser) return null;
     if (!USE_FIREBASE) {
-      const u = currentUser;
+      var u = currentUser;
       return {
         uid: u.uid, name: u.name, email: u.email, joined: u.joined,
         plan: normalizePlan(u.plan), balance: u.balance != null ? u.balance : 0,
         phone: u.phone || "", country: u.country || "", bio: u.bio || "",
       };
     }
-    const extras = getExtras(currentUser.uid);
+    var extras = getExtras(currentUser.uid);
+    var metadata = currentUser.metadata;
+    var creationTime = metadata && metadata.creationTime ? metadata.creationTime : new Date().toISOString();
     return {
       uid: currentUser.uid,
       name: currentUser.displayName || (currentUser.email || "").split("@")[0],
       email: currentUser.email,
-      joined: currentUser.metadata?.creationTime || new Date().toISOString(),
+      joined: creationTime,
       plan: normalizePlan(extras.plan),
       balance: extras.balance != null ? extras.balance : 0,
       phone: extras.phone || "",
@@ -329,8 +349,14 @@ const Finora = (() => {
     if (patch.email && patch.email !== currentUser.email) {
       await currentUser.updateEmail(patch.email);
     }
-    const { name, email, ...rest } = patch;
-    if (Object.keys(rest).length) setExtras(currentUser.uid, rest);
+    var extrasPatch = {};
+    var key;
+    for (key in patch) {
+      if (Object.prototype.hasOwnProperty.call(patch, key) && key !== "name" && key !== "email") {
+        extrasPatch[key] = patch[key];
+      }
+    }
+    if (Object.keys(extrasPatch).length) setExtras(currentUser.uid, extrasPatch);
     renderNavAuth();
     return getProfile();
   }
@@ -338,7 +364,7 @@ const Finora = (() => {
   async function changePassword(currentPassword, newPassword) {
     if (!currentUser) throw new Error("Not signed in.");
     if (!USE_FIREBASE) return Local.changePassword(currentPassword, newPassword);
-    const cred = firebase.auth.EmailAuthProvider.credential(currentUser.email, currentPassword);
+    var cred = firebase.auth.EmailAuthProvider.credential(currentUser.email, currentPassword);
     await currentUser.reauthenticateWithCredential(cred);
     await currentUser.updatePassword(newPassword);
   }
@@ -346,66 +372,75 @@ const Finora = (() => {
   async function deleteAccount(currentPassword) {
     if (!currentUser) throw new Error("Not signed in.");
     if (!USE_FIREBASE) return Local.deleteAccount(currentPassword);
-    const cred = firebase.auth.EmailAuthProvider.credential(currentUser.email, currentPassword);
+    var cred = firebase.auth.EmailAuthProvider.credential(currentUser.email, currentPassword);
     await currentUser.reauthenticateWithCredential(cred);
-    const uid = currentUser.uid;
+    var uid = currentUser.uid;
     await currentUser.delete();
-    const all = allExtras();
+    var all = allExtras();
     delete all[uid];
     localStorage.setItem(EXTRAS_KEY, JSON.stringify(all));
   }
 
   /* --------------------------- Utilities --------------------------- */
-  const fmtMoney = (n, currency = "USD") =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 2 }).format(n || 0);
+  function fmtMoney(n, currency) {
+    if (currency === undefined) currency = "USD";
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: currency, maximumFractionDigits: 2 }).format(n || 0);
+  }
 
-  const fmtNumber = (n) => new Intl.NumberFormat("en-US").format(n || 0);
+  function fmtNumber(n) { return new Intl.NumberFormat("en-US").format(n || 0); }
 
-  const initials = (name) =>
-    (name || "U").split(/[\s@.]+/).filter(Boolean).map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+  function initials(name) {
+    return (name || "U").split(/[\s@.]+/).filter(Boolean).map(function(p) { return p[0]; }).join("").slice(0, 2).toUpperCase();
+  }
 
-  function toast(message, type = "info") {
-    const el = document.createElement("div");
-    el.className = `finora-toast ${type}`;
+  function toast(message, type) {
+    if (type === undefined) type = "info";
+    var el = document.createElement("div");
+    el.className = "finora-toast " + type;
     el.textContent = message;
     document.body.appendChild(el);
-    requestAnimationFrame(() => el.classList.add("show"));
-    setTimeout(() => {
+    requestAnimationFrame(function() { el.classList.add("show"); });
+    setTimeout(function() {
       el.classList.remove("show");
-      setTimeout(() => el.remove(), 250);
+      setTimeout(function() { el.remove(); }, 250);
     }, 3000);
   }
 
   /* ----------------------- UI state helpers ------------------------ */
-  const NO_DATA_MSG = "Connect a market data API to load this.";
-  const API_UNAVAILABLE_MSG = "API is currently unavailable, please try again later or reload the page.";
+  var NO_DATA_MSG = "Connect a market data API to load this.";
+  var API_UNAVAILABLE_MSG = "API is currently unavailable, please try again later or reload the page.";
 
-  function emptyState(message = NO_DATA_MSG, icon = "bi-database-x") {
+  function emptyState(message, icon) {
+    if (message === undefined) message = NO_DATA_MSG;
+    if (icon === undefined) icon = "bi-database-x";
     return `<div class="text-center text-muted-2 py-5">
         <i class="bi ${icon} d-block mb-2" style="font-size:1.9rem;opacity:.55"></i>
         <div>${message}</div>
       </div>`;
   }
 
-  function apiUnavailableState(icon = "bi-wifi-off") {
+  function apiUnavailableState(icon) {
+    if (icon === undefined) icon = "bi-wifi-off";
     return emptyState(API_UNAVAILABLE_MSG, icon);
   }
 
-  function emptyRow(cols, message = NO_DATA_MSG) {
+  function emptyRow(cols, message) {
+    if (message === undefined) message = NO_DATA_MSG;
     return `<tr><td colspan="${cols}" class="text-center text-muted-2 py-5">
         <i class="bi bi-database-x me-2"></i>${message}</td></tr>`;
   }
 
   // Deterministic avatar gradient derived from a ticker symbol.
-  const COLORS = ["#2563EB", "#7C3AED", "#14B8A6", "#38BDF8", "#22C55E", "#F59E0B", "#EC4899", "#EF4444", "#0D9488", "#A78BFA"];
+  var COLORS = ["#2563EB", "#7C3AED", "#14B8A6", "#38BDF8", "#22C55E", "#F59E0B", "#EC4899", "#EF4444", "#0D9488", "#A78BFA"];
   function symbolColor(symbol) {
-    let h = 0;
-    for (let i = 0; i < (symbol || "").length; i++) h = (h * 31 + symbol.charCodeAt(i)) >>> 0;
+    var h = 0;
+    var i;
+    for (i = 0; i < (symbol || "").length; i++) h = (h * 31 + symbol.charCodeAt(i)) >>> 0;
     return `linear-gradient(135deg, ${COLORS[h % COLORS.length]}, ${COLORS[(h >> 3) % COLORS.length]})`;
   }
 
   // Company logos stored in assets/logos. Maps ticker symbol -> image path.
-  const LOGOS = {
+  var LOGOS = {
     AAPL: "assets/logos/Apple.png",
     MSFT: "assets/logos/Microsoft.png",
     NVDA: "assets/logos/Nvidia_logo.png",
@@ -450,11 +485,14 @@ const Finora = (() => {
 
   // Returns the markup for a ticker badge: the company logo when available,
   // otherwise a colored fallback showing the symbol text.
-  function tickerAvatar(symbol, opts = {}) {
-    const { size = "", color, className = "ticker-avatar" } = opts;
-    const sym = (symbol || "").trim().toUpperCase();
-    const cls = [className, size].filter(Boolean).join(" ");
-    const logo = logoFor(sym);
+  function tickerAvatar(symbol, opts) {
+    if (!opts) opts = {};
+    var size = opts.size != null ? opts.size : "";
+    var color = opts.color;
+    var className = opts.className != null ? opts.className : "ticker-avatar";
+    var sym = (symbol || "").trim().toUpperCase();
+    var cls = [className, size].filter(Boolean).join(" ");
+    var logo = logoFor(sym);
     if (logo) {
       return `<span class="${cls} has-logo"><img src="${logo}" alt="${sym}" loading="lazy" onerror="this.parentElement.classList.remove('has-logo');this.parentElement.textContent='${sym}';this.parentElement.style.background='${color || symbolColor(sym)}'"></span>`;
     }
@@ -462,13 +500,13 @@ const Finora = (() => {
   }
 
   /* ------------------------- Navbar binding ------------------------ */
-  const USER_ICON = "assets/Icons/user.png";
+  var USER_ICON = "assets/Icons/user.png";
 
   function renderNavAuth() {
-    const slot = document.querySelector("[data-nav-auth]");
+    var slot = document.querySelector("[data-nav-auth]");
     if (!slot) return;
-    const profile = getProfile();
-    const premiumLink = `<a href="prosubscription.html" class="nav-premium-link" aria-label="Upgrade to Premium">
+    var profile = getProfile();
+    var premiumLink = `<a href="prosubscription.html" class="nav-premium-link" aria-label="Upgrade to Premium">
           <span class="nav-premium-link__title">Upgrade now</span>
           <span class="nav-premium-link__sub">30-day free trial</span>
         </a>`;
@@ -498,8 +536,9 @@ const Finora = (() => {
   }
 
   /* Protect pages that require auth (async — waits for Firebase). */
-  async function requireAuth(nextPath = window.location.pathname.split("/").pop() || "profile.html") {
-    const user = await authReady;
+  async function requireAuth(nextPath) {
+    if (nextPath === undefined) nextPath = window.location.pathname.split("/").pop() || "profile.html";
+    var user = await authReady;
     if (!user) {
       window.location.href = "login.html?next=" + encodeURIComponent(nextPath);
       return null;
@@ -509,8 +548,8 @@ const Finora = (() => {
 
   function init() {
     renderNavAuth();
-    const path = window.location.pathname.split("/").pop() || "index.html";
-    document.querySelectorAll(".navbar .nav-link").forEach((link) => {
+    var path = window.location.pathname.split("/").pop() || "index.html";
+    document.querySelectorAll(".navbar .nav-link").forEach(function(link) {
       if (link.getAttribute("href") === path) link.classList.add("active");
     });
   }
@@ -518,12 +557,12 @@ const Finora = (() => {
   document.addEventListener("DOMContentLoaded", init);
 
   return {
-    authReady, register, login, loginWithGoogle, resetPassword, logout,
-    getProfile, updateProfile, changePassword, deleteAccount,
-    requireAuth, mapAuthError, getToken,
-    fmtMoney, fmtNumber, initials, toast,
-    emptyState, apiUnavailableState, emptyRow, symbolColor, logoFor, tickerAvatar,
-    API_UNAVAILABLE_MSG,
+    authReady: authReady, register: register, login: login, loginWithGoogle: loginWithGoogle, resetPassword: resetPassword, logout: logout,
+    getProfile: getProfile, updateProfile: updateProfile, changePassword: changePassword, deleteAccount: deleteAccount,
+    requireAuth: requireAuth, mapAuthError: mapAuthError,
+    fmtMoney: fmtMoney, fmtNumber: fmtNumber, initials: initials, toast: toast,
+    emptyState: emptyState, apiUnavailableState: apiUnavailableState, emptyRow: emptyRow, symbolColor: symbolColor, logoFor: logoFor, tickerAvatar: tickerAvatar,
+    API_UNAVAILABLE_MSG: API_UNAVAILABLE_MSG,
     isFirebase: USE_FIREBASE,
   };
 })();

@@ -2,20 +2,20 @@
    Finora — Profile page logic
    ===================================================================== */
 
-document.addEventListener("DOMContentLoaded", async () => {
-  const fbUser = await Finora.requireAuth(); // redirects if not logged in
+document.addEventListener("DOMContentLoaded", async function() {
+  var fbUser = await Finora.requireAuth(); // redirects if not logged in
   if (!fbUser) return;
-  const user = Finora.getProfile();
-  const css = getComputedStyle(document.documentElement);
-  const C = (n) => css.getPropertyValue(n).trim();
+  var user = Finora.getProfile();
+  var css = getComputedStyle(document.documentElement);
+  function C(n) { return css.getPropertyValue(n).trim(); }
 
   /* --------------------------- Header ----------------------------- */
   document.getElementById("avatar").textContent = Finora.initials(user.name);
   document.getElementById("profileName").textContent = user.name;
   document.getElementById("profileEmail").textContent = user.email;
   document.getElementById("planBadge").innerHTML = `<i class="bi bi-star-fill me-1"></i>${user.plan} plan`;
-  const joined = new Date(user.joined).toLocaleDateString("en-US", { month: "short", year: "numeric" });
-  document.getElementById("joinedBadge").textContent = `Joined ${joined}`;
+  var joined = new Date(user.joined).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  document.getElementById("joinedBadge").textContent = "Joined " + joined;
 
   document.getElementById("buyingPower").textContent = Finora.fmtMoney(user.balance);
   document.getElementById("statBuying").textContent = Finora.fmtMoney(user.balance);
@@ -26,14 +26,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   loadOverview(fbUser.uid);
 
   async function loadOverview(uid) {
-    let portfolio = { holdings: [], cash: 0 };
+    var portfolio = { holdings: [], cash: 0 };
     try {
       portfolio = (await FinoraAPI.getPortfolio(uid)) || portfolio;
-    } catch {
+    } catch (err) {
       portfolio = { holdings: [], cash: 0 };
     }
-    const holdings = portfolio.holdings || [];
-    const portfolioValue = holdings.reduce((sum, h) => sum + h.shares * h.price, 0);
+    var holdings = portfolio.holdings || [];
+    var portfolioValue = holdings.reduce(function(sum, h) { return sum + h.shares * h.price; }, 0);
 
     document.getElementById("statPortfolio").textContent = Finora.fmtMoney(portfolioValue);
     document.getElementById("statHoldings").textContent = holdings.length;
@@ -44,29 +44,31 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   /* ------------------------ Tab switching ------------------------- */
-  const tabButtons = document.querySelectorAll("#profileTabs .list-group-item");
-  const panes = document.querySelectorAll("[data-pane]");
+  var tabButtons = document.querySelectorAll("#profileTabs .list-group-item");
+  var panes = document.querySelectorAll("[data-pane]");
   function showPane(target) {
-    tabButtons.forEach((b) => b.classList.toggle("active", b.dataset.target === target));
-    panes.forEach((p) => p.classList.toggle("show", p.dataset.pane === target));
+    tabButtons.forEach(function(b) { b.classList.toggle("active", b.dataset.target === target); });
+    panes.forEach(function(p) { p.classList.toggle("show", p.dataset.pane === target); });
   }
-  tabButtons.forEach((b) => b.addEventListener("click", () => {
-    showPane(b.dataset.target);
-    history.replaceState(null, "", "#" + b.dataset.target);
-  }));
+  tabButtons.forEach(function(b) {
+    b.addEventListener("click", function() {
+      showPane(b.dataset.target);
+      history.replaceState(null, "", "#" + b.dataset.target);
+    });
+  });
   if (location.hash) showPane(location.hash.slice(1));
 
   /* ------------------------- Holdings table ----------------------- */
   function renderHoldings(holdings) {
-    const hbody = document.getElementById("holdingsBody");
+    var hbody = document.getElementById("holdingsBody");
     if (!holdings.length) { hbody.innerHTML = Finora.emptyRow(6, "No holdings yet."); return; }
     hbody.innerHTML = holdings
-      .map((h) => {
-        const value = h.shares * h.price;
-        const cost = h.shares * h.avg;
-        const ret = value - cost;
-        const retPct = cost ? (ret / cost) * 100 : 0;
-        const up = ret >= 0;
+      .map(function(h) {
+        var value = h.shares * h.price;
+        var cost = h.shares * h.avg;
+        var ret = value - cost;
+        var retPct = cost ? (ret / cost) * 100 : 0;
+        var up = ret >= 0;
         return `<tr>
             <td>
               <div class="d-flex align-items-center gap-3">
@@ -89,19 +91,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   /* ------------------------ Recent activity ----------------------- */
   async function loadActivity(uid) {
-    const wrap = document.getElementById("activityList");
-    let txs = [];
+    var wrap = document.getElementById("activityList");
+    var txs = [];
     try {
       txs = await FinoraAPI.getTransactions(uid);
-    } catch {
+    } catch (err) {
       txs = [];
     }
     if (!txs.length) { wrap.innerHTML = Finora.emptyState("No activity yet", "bi-clock-history"); return; }
     wrap.innerHTML = txs
-      .map((t, i) => {
-        const buy = t.type === "buy";
-        const icon = t.type === "deposit" ? "bi-cash-stack" : buy ? "bi-arrow-down-circle-fill" : "bi-arrow-up-circle-fill";
-        const color = t.type === "deposit" ? "var(--accent)" : buy ? "var(--bull)" : "var(--bear)";
+      .map(function(t, i) {
+        var buy = t.type === "buy";
+        var icon = t.type === "deposit" ? "bi-cash-stack" : buy ? "bi-arrow-down-circle-fill" : "bi-arrow-up-circle-fill";
+        var color = t.type === "deposit" ? "var(--accent)" : buy ? "var(--bull)" : "var(--bear)";
         return `<div class="d-flex align-items-center justify-content-between py-3 ${i < txs.length - 1 ? "border-bottom border-finora" : ""}">
             <div class="d-flex align-items-center gap-3">
               <i class="bi ${icon} fs-4" style="color:${color}"></i>
@@ -115,11 +117,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   /* ----------------------- Portfolio chart ------------------------ */
   async function drawChart(uid) {
-    const wrap = document.getElementById("portfolioChartWrap");
-    let data = [];
+    var wrap = document.getElementById("portfolioChartWrap");
+    var data = [];
     try {
       data = await FinoraAPI.getPortfolioHistory(uid, "1M");
-    } catch {
+    } catch (err) {
       wrap.innerHTML = Finora.apiUnavailableState("bi-graph-up");
       return;
     }
@@ -133,23 +135,23 @@ document.addEventListener("DOMContentLoaded", async () => {
       lineWidth: 2.5,
       fillAlpha: 0.3,
       axis: true,
-      formatY: (v) => "$" + (v / 1000).toFixed(0) + "k",
-      tooltip: (v) => Finora.fmtMoney(v),
+      formatY: function(v) { return "$" + (v / 1000).toFixed(0) + "k"; },
+      tooltip: function(v) { return Finora.fmtMoney(v); },
     });
   }
 
   /* -------------------------- Settings ---------------------------- */
-  const settingsForm = document.getElementById("settingsForm");
+  var settingsForm = document.getElementById("settingsForm");
   settingsForm.name.value = user.name;
   settingsForm.email.value = user.email;
   settingsForm.phone.value = user.phone || "";
   settingsForm.bio.value = user.bio || "";
   if (user.country) settingsForm.country.value = user.country;
 
-  settingsForm.addEventListener("submit", async (e) => {
+  settingsForm.addEventListener("submit", async function(e) {
     e.preventDefault();
     try {
-      const updated = await Finora.updateProfile({
+      var updated = await Finora.updateProfile({
         name: settingsForm.name.value.trim(),
         email: settingsForm.email.value.trim(),
         phone: settingsForm.phone.value.trim(),
@@ -168,8 +170,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   /* ------------------------- Password ----------------------------- */
-  const pwForm = document.getElementById("passwordForm");
-  pwForm.addEventListener("submit", async (e) => {
+  var pwForm = document.getElementById("passwordForm");
+  pwForm.addEventListener("submit", async function(e) {
     e.preventDefault();
     if (pwForm.next.value.length < 6) return Finora.toast("New password must be at least 6 characters.", "error");
     if (pwForm.next.value !== pwForm.confirm.value) return Finora.toast("New passwords do not match.", "error");
@@ -183,14 +185,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   /* ----------------------- Delete account ------------------------- */
-  document.querySelector("[data-delete-account]").addEventListener("click", async () => {
+  document.querySelector("[data-delete-account]").addEventListener("click", async function() {
     if (!confirm("Are you sure you want to delete your account? This cannot be undone.")) return;
-    const password = prompt("Please confirm your password to delete your account:");
+    var password = prompt("Please confirm your password to delete your account:");
     if (!password) return;
     try {
       await Finora.deleteAccount(password);
       Finora.toast("Account deleted.", "info");
-      setTimeout(() => (window.location.href = "index.html"), 800);
+      setTimeout(function() { window.location.href = "index.html"; }, 800);
     } catch (err) {
       Finora.toast(Finora.mapAuthError(err.code), "error");
     }

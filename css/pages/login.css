@@ -1,0 +1,31 @@
+/* =====================================================================
+   Finora — Login page (login.html)
+   ===================================================================== */
+
+.auth-wrap { min-height: calc(100vh - 72px); display: flex; align-items: center; }
+.auth-aside {
+  background:
+    radial-gradient(600px circle at 20% 20%, rgba(20,184,166,0.18), transparent 50%),
+    var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2.5rem;
+  height: 100%;
+}
+.auth-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; }
+
+.auth-tabs { display: flex; background: var(--bg-main); border: 1px solid var(--border); border-radius: 999px; padding: 4px; gap: 4px; }
+.auth-tabs button {
+  flex: 1; border: none; background: transparent; color: var(--text-muted);
+  font-weight: 600; padding: 0.55rem; border-radius: 999px; transition: all var(--transition);
+}
+.auth-tabs button.active { background: var(--brand); color: #021014; }
+
+.divider-or { display: flex; align-items: center; gap: 1rem; color: var(--text-muted); font-size: 0.85rem; }
+.divider-or::before, .divider-or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+.password-meter { height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.password-meter span { display: block; height: 100%; width: 0; transition: width var(--transition), background var(--transition); }
+
+.btn-social { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary); }
+.btn-social:hover { border-color: var(--brand); color: var(--text-primary); }

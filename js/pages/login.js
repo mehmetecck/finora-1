@@ -2,32 +2,32 @@
    Finora — Login / Registration page logic
    ===================================================================== */
 
-document.addEventListener("DOMContentLoaded", async () => {
-  const params = new URLSearchParams(window.location.search);
-  const requestedNext = params.get("next") || "profile.html";
-  const next = /^(https?:)?\/\//i.test(requestedNext) ? "profile.html" : requestedNext;
+document.addEventListener("DOMContentLoaded", async function() {
+  var params = new URLSearchParams(window.location.search);
+  var requestedNext = params.get("next") || "profile.html";
+  var next = /^(https?:)?\/\//i.test(requestedNext) ? "profile.html" : requestedNext;
 
   // If already logged in, go straight to profile.
-  const existing = await Finora.authReady;
+  var existing = await Finora.authReady;
   if (existing) {
     window.location.href = next;
     return;
   }
 
-  const loginForm = document.getElementById("loginForm");
-  const registerForm = document.getElementById("registerForm");
-  const title = document.getElementById("authTitle");
-  const subtitle = document.getElementById("authSubtitle");
-  const switchHint = document.getElementById("switchHint");
-  const tabs = document.querySelectorAll(".auth-tabs button");
+  var loginForm = document.getElementById("loginForm");
+  var registerForm = document.getElementById("registerForm");
+  var title = document.getElementById("authTitle");
+  var subtitle = document.getElementById("authSubtitle");
+  var switchHint = document.getElementById("switchHint");
+  var tabs = document.querySelectorAll(".auth-tabs button");
 
   /* ---------------- Demo mode (no Firebase config) ----------------- */
   if (!Finora.isFirebase) {
-    const note = document.createElement("div");
+    var note = document.createElement("div");
     note.className = "mb-3 p-2 px-3 border-finora";
     note.style.cssText = "background:var(--bg-elevated);color:var(--text-secondary);font-size:.82rem;border-radius:10px;";
     note.innerHTML = `<i class="bi bi-info-circle text-accent me-1"></i> Demo mode — test login is prefilled. Just click <strong>Log in</strong>.`;
-    const tabsEl = document.querySelector(".auth-tabs");
+    var tabsEl = document.querySelector(".auth-tabs");
     if (tabsEl) tabsEl.before(note);
     loginForm.email.value = "test@finora.com";
     loginForm.password.value = "test1234";
@@ -35,8 +35,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   /* --------------------------- Tab switching ----------------------- */
   function setMode(mode) {
-    const isLogin = mode === "login";
-    tabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === mode));
+    var isLogin = mode === "login";
+    tabs.forEach(function(t) { t.classList.toggle("active", t.dataset.tab === mode); });
     loginForm.classList.toggle("d-none", !isLogin);
     registerForm.classList.toggle("d-none", isLogin);
 
@@ -49,16 +49,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function bindSwitch() {
-    const link = switchHint.querySelector("[data-switch]");
+    var link = switchHint.querySelector("[data-switch]");
     if (link) {
-      link.addEventListener("click", (e) => {
+      link.addEventListener("click", function(e) {
         e.preventDefault();
         setMode(link.dataset.switch);
       });
     }
   }
 
-  tabs.forEach((t) => t.addEventListener("click", () => setMode(t.dataset.tab)));
+  tabs.forEach(function(t) { t.addEventListener("click", function() { setMode(t.dataset.tab); }); });
   bindSwitch();
 
   // Honor ?mode=register deep link.
@@ -71,52 +71,52 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   /* ----------------------- Show / hide password ------------------- */
-  document.querySelectorAll("[data-toggle-pw]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const input = btn.parentElement.querySelector("input");
-      const icon = btn.querySelector("i");
-      const show = input.type === "password";
+  document.querySelectorAll("[data-toggle-pw]").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      var input = btn.parentElement.querySelector("input");
+      var icon = btn.querySelector("i");
+      var show = input.type === "password";
       input.type = show ? "text" : "password";
       icon.className = show ? "bi bi-eye-slash" : "bi bi-eye";
     });
   });
 
   /* ---------------------- Password strength meter ------------------ */
-  const pwInput = registerForm.querySelector('[name="password"]');
-  const meter = document.getElementById("pwMeter");
-  const hint = document.getElementById("pwHint");
-  pwInput.addEventListener("input", () => {
-    const v = pwInput.value;
-    let score = 0;
+  var pwInput = registerForm.querySelector('[name="password"]');
+  var meter = document.getElementById("pwMeter");
+  var hint = document.getElementById("pwHint");
+  pwInput.addEventListener("input", function() {
+    var v = pwInput.value;
+    var score = 0;
     if (v.length >= 8) score++;
     if (/[A-Z]/.test(v)) score++;
     if (/[0-9]/.test(v)) score++;
     if (/[^A-Za-z0-9]/.test(v)) score++;
-    const pct = (score / 4) * 100;
-    const colors = ["#EF4444", "#F59E0B", "#38BDF8", "#22C55E"];
-    const labels = ["Weak", "Fair", "Good", "Strong"];
+    var pct = (score / 4) * 100;
+    var colors = ["#EF4444", "#F59E0B", "#38BDF8", "#22C55E"];
+    var labels = ["Weak", "Fair", "Good", "Strong"];
     meter.style.width = pct + "%";
     if (v.length === 0) {
       meter.style.width = "0%";
       hint.textContent = "Use 8+ characters with a mix of letters, numbers & symbols.";
       hint.style.color = "";
     } else {
-      const i = Math.max(0, score - 1);
+      var i = Math.max(0, score - 1);
       meter.style.background = colors[i];
-      hint.textContent = `Password strength: ${labels[i]}`;
+      hint.textContent = "Password strength: " + labels[i];
       hint.style.color = colors[i];
     }
     checkMatch();
   });
 
   /* --------------------- Confirm password match ------------------- */
-  const confirmInput = registerForm.querySelector('[name="confirm"]');
-  const matchHint = document.getElementById("matchHint");
+  var confirmInput = registerForm.querySelector('[name="confirm"]');
+  var matchHint = document.getElementById("matchHint");
   function checkMatch() {
-    const a = pwInput.value;
-    const b = confirmInput.value;
+    var a = pwInput.value;
+    var b = confirmInput.value;
     if (!b) { matchHint.textContent = ""; return true; }
-    const ok = a === b;
+    var ok = a === b;
     matchHint.textContent = ok ? "Passwords match." : "Passwords do not match.";
     matchHint.style.color = ok ? "var(--bull)" : "var(--bear)";
     return ok;
@@ -125,12 +125,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   /* ------------------------- Validation helpers ------------------- */
   // Basic email check: must contain "@" with text on both sides and a domain.
-  const isEmail = (v) => v.includes("@") && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-  const MIN_PASSWORD = 6; // Firebase requires at least 6 characters.
+  function isEmail(v) { return v.includes("@") && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+  var MIN_PASSWORD = 6; // Firebase requires at least 6 characters.
 
   function fieldError(input, msg) {
     input.classList.add("is-invalid");
-    let fb = input.closest(".mb-3, .mb-2")?.querySelector(".invalid-feedback");
+    var container = input.closest(".mb-3, .mb-2");
+    var fb = container ? container.querySelector(".invalid-feedback") : null;
     if (!fb) {
       fb = document.createElement("div");
       fb.className = "invalid-feedback d-block";
@@ -139,8 +140,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     fb.textContent = msg;
   }
   function clearErrors(form) {
-    form.querySelectorAll(".is-invalid").forEach((i) => i.classList.remove("is-invalid"));
-    form.querySelectorAll(".invalid-feedback").forEach((f) => f.remove());
+    form.querySelectorAll(".is-invalid").forEach(function(i) { i.classList.remove("is-invalid"); });
+    form.querySelectorAll(".invalid-feedback").forEach(function(f) { f.remove(); });
   }
 
   /* ------------------------- Submit helpers ----------------------- */
@@ -155,14 +156,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  const resetLink = document.querySelector("[data-reset-password]");
+  var resetLink = document.querySelector("[data-reset-password]");
   if (resetLink) {
-    let resetInFlight = false;
-    resetLink.addEventListener("click", async (e) => {
+    var resetInFlight = false;
+    resetLink.addEventListener("click", async function(e) {
       e.preventDefault();
       if (resetInFlight) return;
       clearErrors(loginForm);
-      const email = loginForm.email.value.trim();
+      var email = loginForm.email.value.trim();
       if (!isEmail(email)) {
         fieldError(loginForm.email, "Enter your email first so we can send a reset link.");
         return;
@@ -172,14 +173,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       resetLink.classList.add("disabled");
       resetLink.setAttribute("aria-disabled", "true");
       try {
-        const res = await Finora.resetPassword(email);
+        var res = await Finora.resetPassword(email);
         if (!res.ok) {
           fieldError(loginForm.email, res.error);
           Finora.toast(res.error, "error");
           return;
         }
 
-        const message = Finora.isFirebase
+        var message = Finora.isFirebase
           ? "Password reset email sent. Check your inbox."
           : "Demo mode: password reset emails require Firebase config.";
         Finora.toast(message, Finora.isFirebase ? "success" : "info");
@@ -192,20 +193,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   /* ----------------------------- Login ---------------------------- */
-  loginForm.addEventListener("submit", async (e) => {
+  loginForm.addEventListener("submit", async function(e) {
     e.preventDefault();
     clearErrors(loginForm);
-    const email = loginForm.email.value.trim();
-    const password = loginForm.password.value;
-    const remember = document.getElementById("remember")?.checked ?? true;
-    let valid = true;
+    var email = loginForm.email.value.trim();
+    var password = loginForm.password.value;
+    var rememberEl = document.getElementById("remember");
+    var remember = rememberEl ? rememberEl.checked : true;
+    var valid = true;
     if (!isEmail(email)) { fieldError(loginForm.email, "Enter a valid email address."); valid = false; }
     if (!password) { fieldError(loginForm.password, "Password is required."); valid = false; }
     if (!valid) return;
 
-    const btn = loginForm.querySelector('[type="submit"]');
+    var btn = loginForm.querySelector('[type="submit"]');
     setLoading(btn, true, "Logging in…");
-    const res = await Finora.login({ email, password, remember });
+    var res = await Finora.login({ email: email, password: password, remember: remember });
     setLoading(btn, false);
     if (!res.ok) {
       fieldError(loginForm.password, res.error);
@@ -213,33 +215,33 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     Finora.toast("Welcome back!", "success");
-    setTimeout(() => (window.location.href = next), 700);
+    setTimeout(function() { window.location.href = next; }, 700);
   });
 
   /* --------------------------- Register --------------------------- */
-  registerForm.addEventListener("submit", async (e) => {
+  registerForm.addEventListener("submit", async function(e) {
     e.preventDefault();
     clearErrors(registerForm);
-    const name = registerForm.name.value.trim();
-    const email = registerForm.email.value.trim();
-    const password = registerForm.password.value;
-    const confirm = registerForm.confirm.value;
-    const terms = document.getElementById("terms").checked;
-    let valid = true;
+    var name = registerForm.name.value.trim();
+    var email = registerForm.email.value.trim();
+    var password = registerForm.password.value;
+    var confirm = registerForm.confirm.value;
+    var terms = document.getElementById("terms").checked;
+    var valid = true;
 
     if (name.length < 2) { fieldError(registerForm.name, "Please enter your full name."); valid = false; }
     if (!isEmail(email)) { fieldError(registerForm.email, "Enter a valid email address (must include @)."); valid = false; }
     if (!password) { fieldError(registerForm.password, "Please create a password."); valid = false; }
-    else if (password.length < MIN_PASSWORD) { fieldError(registerForm.password, `Password must be at least ${MIN_PASSWORD} characters.`); valid = false; }
+    else if (password.length < MIN_PASSWORD) { fieldError(registerForm.password, "Password must be at least " + MIN_PASSWORD + " characters."); valid = false; }
     // Passwords must match before submission.
     if (password !== confirm) { fieldError(registerForm.confirm, "Passwords do not match."); valid = false; }
     if (!terms) { Finora.toast("Please accept the Terms to continue.", "error"); valid = false; }
     if (!valid) return;
 
-    const btn = registerForm.querySelector('[type="submit"]');
+    var btn = registerForm.querySelector('[type="submit"]');
     setLoading(btn, true, "Creating account…");
     // Creates the user in the Firebase Authentication database.
-    const res = await Finora.register({ name, email, password });
+    var res = await Finora.register({ name: name, email: email, password: password });
     setLoading(btn, false);
     if (!res.ok) {
       // Surface clear, field-specific errors from Firebase.
@@ -253,20 +255,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     // Redirect to the Login page upon successful account creation.
     Finora.toast("Account created! Redirecting to login…", "success");
-    setTimeout(() => (window.location.href = "login.html?registered=1"), 900);
+    setTimeout(function() { window.location.href = "login.html?registered=1"; }, 900);
   });
 
   /* ------------------------- Google login ------------------------- */
-  const googleBtn = document.querySelector("[data-google-login]");
+  var googleBtn = document.querySelector("[data-google-login]");
   if (googleBtn) {
-    googleBtn.addEventListener("click", async () => {
+    googleBtn.addEventListener("click", async function() {
       setLoading(googleBtn, true, "Connecting…");
-      const remember = document.getElementById("remember")?.checked ?? true;
-      const res = await Finora.loginWithGoogle({ remember });
+      var rememberEl = document.getElementById("remember");
+      var remember = rememberEl ? rememberEl.checked : true;
+      var res = await Finora.loginWithGoogle({ remember: remember });
       setLoading(googleBtn, false);
       if (!res.ok) { Finora.toast(res.error, "error"); return; }
       Finora.toast("Signed in with Google!", "success");
-      setTimeout(() => (window.location.href = next), 700);
+      setTimeout(function() { window.location.href = next; }, 700);
     });
   }
 });

@@ -3,22 +3,22 @@
    Company list + detailed stock view, powered by FinoraAPI.
    ===================================================================== */
 
-document.addEventListener("DOMContentLoaded", () => {
-  const css = getComputedStyle(document.documentElement);
-  const C = (n) => css.getPropertyValue(n).trim();
+document.addEventListener("DOMContentLoaded", function() {
+  var css = getComputedStyle(document.documentElement);
+  function C(n) { return css.getPropertyValue(n).trim(); }
 
-  const listEl = document.getElementById("stockList");
-  const detailEl = document.getElementById("stockDetail");
-  const searchEl = document.getElementById("stockSearch");
+  var listEl = document.getElementById("stockList");
+  var detailEl = document.getElementById("stockDetail");
+  var searchEl = document.getElementById("stockSearch");
 
-  const params = new URLSearchParams(location.search);
-  let activeSymbol = params.get("symbol") || null;
-  let companies = [];
-  let searchTimer = null;
-  let searchRun = 0;
-  let detailRun = 0;
-  let chartType = "line";
-  let chartRange = "1M";
+  var params = new URLSearchParams(location.search);
+  var activeSymbol = params.get("symbol") || null;
+  var companies = [];
+  var searchTimer = null;
+  var searchRun = 0;
+  var detailRun = 0;
+  var chartType = "line";
+  var chartRange = "1M";
 
   init();
 
@@ -27,12 +27,12 @@ document.addEventListener("DOMContentLoaded", () => {
     detailEl.innerHTML = Finora.emptyState("Loading market data...", "bi-hourglass-split");
     searchEl.addEventListener("input", handleSearchInput);
 
-    const initialSymbol = activeSymbol;
+    var initialSymbol = activeSymbol;
     if (initialSymbol) loadDetail(initialSymbol);
 
     try {
       companies = await FinoraAPI.getTrending();
-    } catch {
+    } catch (err) {
       companies = [];
     }
 
@@ -59,7 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function handleSearchInput() {
-    const q = searchEl.value.trim().toLowerCase();
+    var q = searchEl.value.trim().toLowerCase();
     clearTimeout(searchTimer);
 
     if (!q) {
@@ -67,20 +67,20 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const filtered = companies.filter(
-      (c) => c.symbol.toLowerCase().includes(q) || (c.name || "").toLowerCase().includes(q)
-    );
+    var filtered = companies.filter(function(c) {
+      return c.symbol.toLowerCase().includes(q) || (c.name || "").toLowerCase().includes(q);
+    });
     renderList(filtered);
 
     if (q.length < 2) return;
-    const run = ++searchRun;
-    searchTimer = setTimeout(async () => {
+    var run = ++searchRun;
+    searchTimer = setTimeout(async function() {
       renderSearchStatus(filtered);
       try {
-        const results = await FinoraAPI.searchCompanies(q, 8);
+        var results = await FinoraAPI.searchCompanies(q, 8);
         if (run !== searchRun) return;
         renderList(mergeCompanies(filtered, results));
-      } catch {
+      } catch (err) {
         if (run !== searchRun) return;
         renderList(filtered);
         if (!filtered.length) {
@@ -98,11 +98,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     listEl.innerHTML = items
-      .map((c) => {
-        const price = c.price != null ? Finora.fmtMoney(c.price) : "--";
-        const hasChange = Number.isFinite(c.change);
-        const up = (c.change || 0) >= 0;
-        const active = c.symbol === activeSymbol ? "active" : "";
+      .map(function(c) {
+        var price = c.price != null ? Finora.fmtMoney(c.price) : "--";
+        var hasChange = Number.isFinite(c.change);
+        var up = (c.change || 0) >= 0;
+        var active = c.symbol === activeSymbol ? "active" : "";
         return `<button class="stock-list-item ${active}" data-symbol="${c.symbol}">
             ${Finora.tickerAvatar(c.symbol, { size: "sm", color: c.color })}
             <span class="flex-grow-1 text-start min-w-0">
@@ -117,14 +117,14 @@ document.addEventListener("DOMContentLoaded", () => {
       })
       .join("");
 
-    listEl.querySelectorAll("[data-symbol]").forEach((btn) => {
-      btn.addEventListener("click", () => {
+    listEl.querySelectorAll("[data-symbol]").forEach(function(btn) {
+      btn.addEventListener("click", function() {
         activeSymbol = btn.dataset.symbol;
-        const selected = items.find((item) => item.symbol === activeSymbol);
-        if (selected && !companies.some((item) => item.symbol === selected.symbol)) companies.unshift(selected);
+        var selected = items.find(function(item) { return item.symbol === activeSymbol; });
+        if (selected && !companies.some(function(item) { return item.symbol === selected.symbol; })) companies.unshift(selected);
         renderList(items);
         loadDetail(activeSymbol);
-        history.replaceState(null, "", `market.html?symbol=${activeSymbol}`);
+        history.replaceState(null, "", "market.html?symbol=" + activeSymbol);
       });
     });
   }
@@ -138,21 +138,22 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function mergeCompanies(primary, secondary) {
-    const bySymbol = new Map();
-    [...primary, ...secondary].forEach((item) => {
-      if (item?.symbol && !bySymbol.has(item.symbol)) bySymbol.set(item.symbol, item);
+    var bySymbol = new Map();
+    var combined = primary.concat(secondary);
+    combined.forEach(function(item) {
+      if (item && item.symbol && !bySymbol.has(item.symbol)) bySymbol.set(item.symbol, item);
     });
-    return [...bySymbol.values()];
+    return Array.from(bySymbol.values());
   }
 
   /* --------------------------- Detail ----------------------------- */
   async function loadDetail(symbol) {
-    const run = ++detailRun;
-    detailEl.innerHTML = Finora.emptyState(`Loading ${symbol.toUpperCase()}...`, "bi-hourglass-split");
-    let s;
+    var run = ++detailRun;
+    detailEl.innerHTML = Finora.emptyState("Loading " + symbol.toUpperCase() + "...", "bi-hourglass-split");
+    var s;
     try {
       s = await FinoraAPI.getStock(symbol);
-    } catch {
+    } catch (err) {
       s = null;
     }
     if (run !== detailRun) return;
@@ -175,7 +176,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderDetail(s) {
-    const up = s.change >= 0;
+    var up = s.change >= 0;
     detailEl.innerHTML = `
       <div class="card-finora p-4 mb-4">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
@@ -214,7 +215,7 @@ document.addEventListener("DOMContentLoaded", () => {
               </button>
             </div>
             <div class="btn-group btn-group-sm" id="rangeBtns">
-              ${["1D", "1W", "1M", "1Y"].map((r) => `<button class="btn btn-ghost ${r === chartRange ? "active" : ""}" data-range="${r}">${r}</button>`).join("")}
+              ${["1D", "1W", "1M", "1Y"].map(function(r) { return `<button class="btn btn-ghost ${r === chartRange ? "active" : ""}" data-range="${r}">${r}</button>`; }).join("")}
             </div>
           </div>
         </div>
@@ -259,20 +260,20 @@ document.addEventListener("DOMContentLoaded", () => {
     loadHistory(s.symbol);
     loadNews(s.symbol);
 
-    detailEl.querySelectorAll("#rangeBtns [data-range]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        detailEl.querySelectorAll("#rangeBtns .btn").forEach((b) => b.classList.remove("active"));
+    detailEl.querySelectorAll("#rangeBtns [data-range]").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        detailEl.querySelectorAll("#rangeBtns .btn").forEach(function(b) { b.classList.remove("active"); });
         btn.classList.add("active");
         chartRange = btn.dataset.range;
         drawChart(s.symbol, chartRange);
       });
     });
 
-    detailEl.querySelectorAll("#chartTypeToggle [data-chart-type]").forEach((btn) => {
-      btn.addEventListener("click", () => {
+    detailEl.querySelectorAll("#chartTypeToggle [data-chart-type]").forEach(function(btn) {
+      btn.addEventListener("click", function() {
         chartType = btn.dataset.chartType;
-        detailEl.querySelectorAll("#chartTypeToggle .chart-type-btn").forEach((b) => {
-          const active = b.dataset.chartType === chartType;
+        detailEl.querySelectorAll("#chartTypeToggle .chart-type-btn").forEach(function(b) {
+          var active = b.dataset.chartType === chartType;
           b.classList.toggle("active", active);
           b.setAttribute("aria-pressed", active ? "true" : "false");
         });
@@ -282,7 +283,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function renderKeyInfo(s) {
-    const rows = [
+    var rows = [
       ["Open", s.open], ["Prev close", s.prevClose],
       ["Day high", s.high], ["Day low", s.low],
       ["52w high", s.high52], ["52w low", s.low52],
@@ -292,23 +293,27 @@ document.addEventListener("DOMContentLoaded", () => {
       ["Beta", s.beta],
     ];
     document.getElementById("keyInfo").innerHTML = rows
-      .map(([k, v]) => `<div class="col-6">
+      .map(function(row) {
+        var k = row[0];
+        var v = row[1];
+        return `<div class="col-6">
           <div class="text-muted-2 small">${k}</div>
-          <div class="fw-semibold">${v ?? "--"}</div>
-        </div>`)
+          <div class="fw-semibold">${v != null ? v : "--"}</div>
+        </div>`;
+      })
       .join("");
   }
 
   async function drawChart(symbol, range) {
-    const wrap = document.getElementById("chartWrap");
+    var wrap = document.getElementById("chartWrap");
     if (!wrap) return;
 
     chartRange = range;
 
-    let ohlc = [];
+    var ohlc = [];
     try {
       ohlc = await FinoraAPI.getOHLC(symbol, range);
-    } catch {
+    } catch (err) {
       wrap.innerHTML = Finora.apiUnavailableState("bi-graph-up");
       return;
     }
@@ -322,37 +327,37 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("stockChart"),
       {
         mode: chartType,
-        ohlc,
-        closes: ohlc.map((b) => b.close),
+        ohlc: ohlc,
+        closes: ohlc.map(function(b) { return b.close; }),
       },
       {
         bull: C("--bull"),
         bear: C("--bear"),
-        formatY: (v) => "$" + Number(v).toFixed(2),
-        formatTooltip: (v) => Finora.fmtMoney(v),
+        formatY: function(v) { return "$" + Number(v).toFixed(2); },
+        formatTooltip: function(v) { return Finora.fmtMoney(v); },
       }
     );
   }
 
   async function loadHistory(symbol) {
-    const body = document.getElementById("historyBody");
-    let data = [];
+    var body = document.getElementById("historyBody");
+    var data = [];
     try {
       data = await FinoraAPI.getHistory(symbol, "1M");
-    } catch {
+    } catch (err) {
       body.innerHTML = Finora.emptyRow(3, Finora.API_UNAVAILABLE_MSG);
       return;
     }
     if (!data.length) { body.innerHTML = Finora.emptyRow(3, Finora.API_UNAVAILABLE_MSG); return; }
-    const today = new Date();
-    const rows = data.slice(-10).reverse();
+    var today = new Date();
+    var rows = data.slice(-10).reverse();
     body.innerHTML = rows
-      .map((close, i) => {
-        const d = new Date(today);
+      .map(function(close, i) {
+        var d = new Date(today);
         d.setDate(today.getDate() - i);
-        const prev = rows[i + 1];
-        const chg = prev != null ? ((close - prev) / prev) * 100 : 0;
-        const up = chg >= 0;
+        var prev = rows[i + 1];
+        var chg = prev != null ? ((close - prev) / prev) * 100 : 0;
+        var up = chg >= 0;
         return `<tr>
             <td class="text-muted-2">${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}</td>
             <td class="text-end fw-semibold">${Finora.fmtMoney(close)}</td>
@@ -363,34 +368,34 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function loadNews(symbol) {
-    const wrap = document.getElementById("newsList");
-    let news = [];
+    var wrap = document.getElementById("newsList");
+    var news = [];
     try {
       news = await FinoraAPI.getNews(symbol);
-    } catch {
+    } catch (err) {
       wrap.innerHTML = Finora.apiUnavailableState("bi-newspaper");
       return;
     }
     if (!news.length) { wrap.innerHTML = Finora.emptyState("No news available", "bi-newspaper"); return; }
     wrap.innerHTML = news
-      .map(
-        (n) => `<a href="${n.url || "#"}" class="news-item d-flex gap-3 text-decoration-none" target="_blank" rel="noopener">
+      .map(function(n) {
+        return `<a href="${n.url || "#"}" class="news-item d-flex gap-3 text-decoration-none" target="_blank" rel="noopener">
           <div class="news-tag">${n.tag || "News"}</div>
           <div class="min-w-0">
             <div class="fw-semibold text-white text-truncate">${n.title}</div>
             <div class="text-muted-2 small text-truncate">${n.source || ""}${n.time ? " - " + n.time : ""}</div>
           </div>
-        </a>`
-      )
+        </a>`;
+      })
       .join("");
   }
 
   function bindActions(s) {
-    detailEl.querySelectorAll("[data-action]").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        const user = await Finora.authReady;
+    detailEl.querySelectorAll("[data-action]").forEach(function(btn) {
+      btn.addEventListener("click", async function() {
+        var user = await Finora.authReady;
         if (!user) { location.href = "login.html?next=market.html"; return; }
-        Finora.toast(`Trading is not connected to a broker API yet (${btn.dataset.action} ${s.symbol}).`, "info");
+        Finora.toast("Trading is not connected to a broker API yet (" + btn.dataset.action + " " + s.symbol + ").", "info");
       });
     });
   }

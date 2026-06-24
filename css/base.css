@@ -1,50 +1,36 @@
 /* =====================================================================
-   Finora — Stock Market Web App
-   Global design system built from the project color scheme.
+   Finora — Base styles (shared across all pages)
+   Design tokens, layout reset, navbar, buttons, cards, forms, tables.
    ===================================================================== */
 
 :root {
-  /* Backgrounds */
-  --bg-main: #0B1220;        /* Rich Navy */
-  --bg-secondary: #131D31;   /* Midnight Blue (cards) */
-  --bg-elevated: #1A2740;    /* Steel Navy (modals/elevated) */
-  --border: #22314F;         /* Slate Blue (borders/dividers) */
-
-  /* Brand */
-  --brand: #14B8A6;          /* Turquoise */
-  --brand-hover: #0D9488;    /* Deep Teal */
-  --brand-pressed: #0F766E;  /* Dark Teal */
-  --accent: #38BDF8;         /* Electric Cyan */
-
-  /* Market */
-  --bull: #22C55E;           /* Emerald Green */
-  --bear: #EF4444;           /* Market Red */
-  --neutral: #94A3B8;        /* Cool Gray */
-  --disabled: #64748B;       /* Slate Gray */
-
-  /* Premium gradient */
-  --grad-start: #2563EB;     /* Royal Blue */
-  --grad-mid: #7C3AED;       /* Vivid Purple */
-  --grad-end: #EC4899;       /* Hot Pink */
-
-  /* Text */
-  --text-primary: #F8FAFC;   /* Snow White */
-  --text-secondary: #CBD5E1; /* Silver Mist */
-  --text-muted: #94A3B8;     /* Cool Gray */
-  --text-disabled: #64748B;  /* Slate Gray */
-
-  /* Status / charts */
+  --bg-main: #0B1220;
+  --bg-secondary: #131D31;
+  --bg-elevated: #1A2740;
+  --border: #22314F;
+  --brand: #14B8A6;
+  --brand-hover: #0D9488;
+  --brand-pressed: #0F766E;
+  --accent: #38BDF8;
+  --bull: #22C55E;
+  --bear: #EF4444;
+  --neutral: #94A3B8;
+  --disabled: #64748B;
+  --grad-start: #2563EB;
+  --grad-mid: #7C3AED;
+  --grad-end: #EC4899;
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-muted: #94A3B8;
+  --text-disabled: #64748B;
   --amber: #F59E0B;
   --gold: #EAB308;
   --purple-soft: #A78BFA;
-
-  /* Effects */
   --radius: 16px;
   --radius-sm: 10px;
   --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.35);
   --shadow-brand: 0 10px 30px rgba(20, 184, 166, 0.25);
   --transition: 0.2s ease;
-
   --premium-gradient: linear-gradient(135deg, var(--grad-start), var(--grad-mid), var(--grad-end));
   --brand-gradient: linear-gradient(135deg, var(--brand), var(--accent));
 }
@@ -62,7 +48,6 @@ body {
   line-height: 1.6;
 }
 
-/* Subtle ambient glow behind the page */
 body::before {
   content: "";
   position: fixed;
@@ -79,13 +64,11 @@ a:hover { color: var(--brand); }
 
 ::selection { background: var(--brand); color: #021014; }
 
-/* Scrollbar */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: var(--bg-main); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--brand-pressed); }
 
-/* ----------------------------- Typography ---------------------------- */
 .section-title {
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -119,7 +102,6 @@ a:hover { color: var(--brand); }
   color: var(--brand);
 }
 
-/* ------------------------------ Buttons ------------------------------ */
 .btn { border-radius: var(--radius-sm); font-weight: 600; transition: all var(--transition); }
 
 .btn-brand {
@@ -159,7 +141,6 @@ a:hover { color: var(--brand); }
   100% { background-position: 0% 50%; }
 }
 
-/* ------------------------------ Navbar ------------------------------- */
 .navbar {
   background: rgba(11, 18, 32, 0.8);
   backdrop-filter: blur(14px);
@@ -290,7 +271,6 @@ a:hover { color: var(--brand); }
   white-space: nowrap;
 }
 
-/* ------------------------------- Cards ------------------------------- */
 .card-finora {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
@@ -299,14 +279,12 @@ a:hover { color: var(--brand); }
 
 .card-elevated { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius); }
 
-/* ------------------------------ Badges ------------------------------- */
 .badge-soft { background: rgba(20, 184, 166, 0.12); color: var(--brand); border: 1px solid rgba(20, 184, 166, 0.3); font-weight: 600; }
 .badge-bull { background: rgba(34, 197, 94, 0.14); color: var(--bull); font-weight: 600; }
 .badge-bear { background: rgba(239, 68, 68, 0.14); color: var(--bear); font-weight: 600; }
 .badge-premium { background: var(--premium-gradient); color: #fff; font-weight: 600; }
 .badge-gold { background: rgba(234, 179, 8, 0.15); color: var(--gold); border: 1px solid rgba(234, 179, 8, 0.35); font-weight: 600; }
 
-/* ------------------------------ Forms -------------------------------- */
 .form-control, .form-select {
   background: var(--bg-main);
   border: 1px solid var(--border);
@@ -326,8 +304,8 @@ a:hover { color: var(--brand); }
 .form-check-input { background-color: var(--bg-main); border-color: var(--border); }
 .form-check-input:checked { background-color: var(--brand); border-color: var(--brand); }
 .form-check-input:focus { box-shadow: 0 0 0 0.2rem rgba(20, 184, 166, 0.2); }
+.form-switch .form-check-input { width: 2.4em; height: 1.25em; }
 
-/* ------------------------------ Tables ------------------------------- */
 .table-finora {
   --bs-table-bg: transparent;
   --bs-table-color: var(--text-secondary);
@@ -363,7 +341,6 @@ a:hover { color: var(--brand); }
 }
 .table-finora tbody td:first-child { color: var(--text-primary); font-weight: 500; }
 
-/* Stock symbol avatar */
 .ticker-avatar {
   width: 40px; height: 40px;
   border-radius: 10px;
@@ -376,7 +353,6 @@ a:hover { color: var(--brand); }
 .ticker-avatar.sm { width: 34px; height: 34px; border-radius: 9px; font-size: 0.68rem; flex: 0 0 auto; }
 .ticker-avatar.lg { width: 54px; height: 54px; border-radius: 14px; font-size: 0.95rem; }
 
-/* Company logo badges */
 .ticker-avatar.has-logo,
 .holding-logo.has-logo {
   background: #fff;
@@ -392,172 +368,12 @@ a:hover { color: var(--brand); }
   display: block;
 }
 
-.stock-list-item {
-  width: 100%;
-  min-height: 60px;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.65rem 0.75rem;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: background var(--transition), border-color var(--transition), color var(--transition);
-}
-.stock-list-item:hover:not(.active) {
-  background: var(--bg-elevated);
-  border-color: var(--border);
-  color: var(--text-primary);
-}
-.stock-list-item.active {
-  background: rgba(20, 184, 166, 0.12);
-  border-color: rgba(20, 184, 166, 0.45);
-}
-.stock-list-item:focus-visible {
-  outline: none;
-  border-color: var(--brand);
-  box-shadow: 0 0 0 0.2rem rgba(20, 184, 166, 0.2);
+.holding-logo {
+  width: 38px; height: 38px; border-radius: 9px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 0.75rem; color: #021014;
 }
 
-.news-item {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  align-items: center;
-  padding: 0.8rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-main);
-  transition: background var(--transition), border-color var(--transition);
-}
-.news-item:hover { background: var(--bg-elevated); border-color: var(--brand); }
-.news-item > .min-w-0 {
-  flex: 1 1 0;
-  overflow: hidden;
-}
-.news-tag {
-  flex: 0 0 auto;
-  min-width: 56px;
-  text-align: center;
-  border-radius: 999px;
-  padding: 0.25rem 0.5rem;
-  background: rgba(56, 189, 248, 0.14);
-  color: var(--accent);
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-
-#stockDetail {
-  min-width: 0;
-}
-
-#newsList {
-  min-width: 0;
-}
-
-#chartWrap,
-#portfolioChartWrap,
-#heroChartWrap,
-#perfWrap {
-  max-width: 100%;
-  overflow: hidden;
-  position: relative;
-}
-
-#chartWrap { height: 260px; }
-#heroChartWrap { height: 190px; }
-#portfolioChartWrap { height: 110px; }
-#perfWrap { height: 240px; }
-#allocWrap { height: 180px; }
-
-.chart-type-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  padding: 0.2rem;
-  border-radius: 999px;
-  background: var(--bg-main);
-  border: 1px solid var(--border);
-}
-
-.chart-type-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background var(--transition), color var(--transition), box-shadow var(--transition);
-}
-
-.chart-type-btn:hover:not(.active) {
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-}
-
-.chart-type-btn.active {
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-}
-
-.chart-type-btn i {
-  font-size: 1rem;
-  line-height: 1;
-}
-
-/* --------------------------- Market ticker --------------------------- */
-.ticker-tape {
-  background: var(--bg-secondary);
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  overflow: hidden;
-  white-space: nowrap;
-  padding: 0.6rem 0;
-}
-.ticker-track { display: inline-flex; gap: 2.5rem; animation: ticker-scroll 38s linear infinite; }
-.ticker-tape:hover .ticker-track { animation-play-state: paused; }
-.ticker-item { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; font-weight: 500; }
-.ticker-item .sym { color: var(--text-primary); font-weight: 700; }
-@keyframes ticker-scroll {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-
-/* ------------------------------ Hero --------------------------------- */
-.hero { position: relative; padding: 6rem 0 4rem; overflow: hidden; }
-.hero h1 { font-weight: 800; font-size: clamp(2.4rem, 5vw, 4rem); line-height: 1.08; letter-spacing: -0.03em; }
-
-.stat-pill { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.9rem 1.1rem; }
-.stat-pill .num { font-weight: 800; font-size: 1.3rem; }
-
-/* Floating mini chart card in hero */
-.glow-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-soft);
-  position: relative;
-}
-.glow-card::after {
-  content: "";
-  position: absolute; inset: -1px;
-  border-radius: var(--radius);
-  padding: 1px;
-  background: linear-gradient(135deg, rgba(20,184,166,0.5), transparent 40%, rgba(56,189,248,0.4));
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor; mask-composite: exclude;
-  pointer-events: none;
-}
-
-/* ----------------------------- Features ------------------------------ */
 .feature-icon {
   width: 52px; height: 52px; border-radius: 14px;
   display: inline-flex; align-items: center; justify-content: center;
@@ -566,127 +382,10 @@ a:hover { color: var(--brand); }
   border: 1px solid rgba(20, 184, 166, 0.25);
 }
 
-/* ------------------------------ Footer ------------------------------- */
-.footer { background: var(--bg-secondary); border-top: 1px solid var(--border); padding: 3rem 0 1.5rem; margin-top: 4rem; }
-.footer a { color: var(--text-muted); }
-.footer a:hover { color: var(--brand); }
-
-/* --------------------------- Auth page ------------------------------- */
-.auth-wrap { min-height: calc(100vh - 72px); display: flex; align-items: center; }
-.auth-aside {
-  background:
-    radial-gradient(600px circle at 20% 20%, rgba(20,184,166,0.18), transparent 50%),
-    var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 2.5rem;
-  height: 100%;
-}
-.auth-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; }
-
-.auth-tabs { display: flex; background: var(--bg-main); border: 1px solid var(--border); border-radius: 999px; padding: 4px; gap: 4px; }
-.auth-tabs button {
-  flex: 1; border: none; background: transparent; color: var(--text-muted);
-  font-weight: 600; padding: 0.55rem; border-radius: 999px; transition: all var(--transition);
-}
-.auth-tabs button.active { background: var(--brand); color: #021014; }
-
-.divider-or { display: flex; align-items: center; gap: 1rem; color: var(--text-muted); font-size: 0.85rem; }
-.divider-or::before, .divider-or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
-
-.password-meter { height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; }
-.password-meter span { display: block; height: 100%; width: 0; transition: width var(--transition), background var(--transition); }
-
-.btn-social { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary); }
-.btn-social:hover { border-color: var(--brand); color: var(--text-primary); }
-
-/* ---------------------------- Profile -------------------------------- */
-.profile-cover {
-  height: 160px; border-radius: var(--radius);
-  background: var(--premium-gradient);
-  background-size: 200% 200%; animation: shift 8s ease infinite;
-  position: relative;
-}
-.profile-avatar {
-  width: 110px; height: 110px; border-radius: 50%;
-  background: var(--bg-elevated); border: 4px solid var(--bg-main);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 2.4rem; font-weight: 800; color: var(--brand);
-  margin-top: -64px;
-}
-.profile-nav .list-group-item {
-  background: transparent; border: none; color: var(--text-secondary);
-  border-radius: var(--radius-sm); padding: 0.7rem 1rem; font-weight: 500; cursor: pointer;
-  display: flex; align-items: center; gap: 0.7rem;
-  transition: background var(--transition), color var(--transition);
-}
-.profile-nav .list-group-item:hover:not(.active) {
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-}
-.profile-nav .list-group-item.active { background: rgba(20,184,166,0.12); color: var(--brand); border-left: 3px solid var(--brand); }
-
-.stat-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; }
-.stat-card .label { color: var(--text-muted); font-size: 0.82rem; font-weight: 500; }
-.stat-card .value { font-size: 1.6rem; font-weight: 800; }
-
-.holding-logo {
-  width: 38px; height: 38px; border-radius: 9px;
-  display: inline-flex; align-items: center; justify-content: center;
-  font-weight: 800; font-size: 0.75rem; color: #021014;
-}
-
-.tab-pane-fade { display: none; }
-.tab-pane-fade.show { display: block; animation: fadeIn 0.3s ease; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-
-/* Toggle switch sizing */
-.form-switch .form-check-input { width: 2.4em; height: 1.25em; }
-
-/* Utilities */
 .divider-line { height: 1px; background: var(--border); border: none; opacity: 1; }
 .border-finora { border: 1px solid var(--border) !important; }
-
-/* ----------------------------- Pricing ------------------------------- */
-.plan-card { position: relative; }
-.plan-card.featured { border-color: var(--brand); box-shadow: var(--shadow-brand); }
-.plan-badge { position: absolute; top: -13px; right: 18px; }
-
-/* Bootstrap accordion — dark theme */
-.accordion-button {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  font-weight: 600;
-  border-radius: var(--radius-sm) !important;
-}
-.accordion-button:not(.collapsed) { background: var(--bg-elevated); color: var(--text-primary); box-shadow: none; }
-.accordion-button:focus { box-shadow: 0 0 0 0.2rem rgba(20, 184, 166, 0.2); border-color: var(--brand); }
-.accordion-button::after { filter: invert(0.8) sepia(1) saturate(3) hue-rotate(130deg); }
-.accordion-body { background: var(--bg-secondary); color: var(--text-secondary); }
-.accordion-item { overflow: hidden; border-radius: var(--radius-sm) !important; }
-
-/* Utility */
 .min-w-0 { min-width: 0 !important; }
 
-/* Chart hover tooltip (FinoraChart) */
-.finora-chart-tip {
-  position: absolute;
-  display: none;
-  transform: translate(-50%, -135%);
-  pointer-events: none;
-  z-index: 5;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.35rem 0.6rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  white-space: nowrap;
-  box-shadow: var(--shadow-soft);
-}
-
-/* Toast */
 .finora-toast {
   position: fixed; bottom: 24px; right: 24px; z-index: 1080;
   background: var(--bg-elevated); border: 1px solid var(--border);

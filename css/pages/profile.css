@@ -1,0 +1,43 @@
+/* =====================================================================
+   Finora — Profile page (profile.html)
+   ===================================================================== */
+
+.profile-cover {
+  height: 160px; border-radius: var(--radius);
+  background: var(--premium-gradient);
+  background-size: 200% 200%; animation: shift 8s ease infinite;
+  position: relative;
+}
+.profile-avatar {
+  width: 110px; height: 110px; border-radius: 50%;
+  background: var(--bg-elevated); border: 4px solid var(--bg-main);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.4rem; font-weight: 800; color: var(--brand);
+  margin-top: -64px;
+}
+.profile-nav .list-group-item {
+  background: transparent; border: none; color: var(--text-secondary);
+  border-radius: var(--radius-sm); padding: 0.7rem 1rem; font-weight: 500; cursor: pointer;
+  display: flex; align-items: center; gap: 0.7rem;
+  transition: background var(--transition), color var(--transition);
+}
+.profile-nav .list-group-item:hover:not(.active) {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+.profile-nav .list-group-item.active { background: rgba(20,184,166,0.12); color: var(--brand); border-left: 3px solid var(--brand); }
+
+.stat-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; }
+.stat-card .label { color: var(--text-muted); font-size: 0.82rem; font-weight: 500; }
+.stat-card .value { font-size: 1.6rem; font-weight: 800; }
+
+.tab-pane-fade { display: none; }
+.tab-pane-fade.show { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+#portfolioChartWrap {
+  max-width: 100%;
+  overflow: hidden;
+  position: relative;
+  height: 110px;
+}

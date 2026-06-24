@@ -2,8 +2,8 @@
    Finora — Pricing / Premium page
    ===================================================================== */
 
-document.addEventListener("DOMContentLoaded", () => {
-  const plans = [
+document.addEventListener("DOMContentLoaded", function() {
+  var plans = [
     {
       id: "Free", name: "Free", monthly: 0,
       tagline: "For getting started", featured: false,
@@ -27,25 +27,26 @@ document.addEventListener("DOMContentLoaded", () => {
     },
   ];
 
-  let billing = "monthly"; // or "yearly" (20% off)
-  const row = document.getElementById("plansRow");
+  var billing = "monthly"; // or "yearly" (20% off)
+  var row = document.getElementById("plansRow");
 
   function priceFor(plan) {
     if (plan.monthly === 0) return { big: "$0", sub: "forever" };
     if (billing === "yearly") {
-      const perMonth = plan.monthly * 0.8;
-      return { big: `$${perMonth.toFixed(2)}`, sub: `/mo · billed $${(perMonth * 12).toFixed(0)}/yr` };
+      var perMonth = plan.monthly * 0.8;
+      return { big: "$" + perMonth.toFixed(2), sub: "/mo · billed $" + (perMonth * 12).toFixed(0) + "/yr" };
     }
-    return { big: `$${plan.monthly.toFixed(2)}`, sub: "/mo" };
+    return { big: "$" + plan.monthly.toFixed(2), sub: "/mo" };
   }
 
   function render() {
-    const current = (Finora.getProfile() && Finora.getProfile().plan) || "Free";
+    var profile = Finora.getProfile();
+    var current = (profile && profile.plan) || "Free";
     row.innerHTML = plans
-      .map((plan) => {
-        const p = priceFor(plan);
-        const isCurrent = plan.id === current;
-        const cta = isCurrent ? "Current plan" : plan.cta;
+      .map(function(plan) {
+        var p = priceFor(plan);
+        var isCurrent = plan.id === current;
+        var cta = isCurrent ? "Current plan" : plan.cta;
         return `<div class="col-md-6 col-lg-5">
             <div class="card-finora plan-card h-100 p-4 ${plan.featured ? "featured" : ""}">
               ${plan.featured ? `<span class="badge badge-premium plan-badge">Most popular</span>` : ""}
@@ -61,7 +62,7 @@ document.addEventListener("DOMContentLoaded", () => {
               </button>
               <ul class="list-unstyled d-grid gap-2 mb-0">
                 ${plan.features
-                  .map((f) => `<li class="d-flex align-items-start gap-2"><i class="bi bi-check-circle-fill text-brand mt-1"></i><span class="text-secondary-2">${f}</span></li>`)
+                  .map(function(f) { return `<li class="d-flex align-items-start gap-2"><i class="bi bi-check-circle-fill text-brand mt-1"></i><span class="text-secondary-2">${f}</span></li>`; })
                   .join("")}
               </ul>
             </div>
@@ -69,27 +70,27 @@ document.addEventListener("DOMContentLoaded", () => {
       })
       .join("");
 
-    row.querySelectorAll("[data-buy]").forEach((btn) => {
-      btn.addEventListener("click", () => buy(btn.dataset.buy));
+    row.querySelectorAll("[data-buy]").forEach(function(btn) {
+      btn.addEventListener("click", function() { buy(btn.dataset.buy); });
     });
   }
 
   async function buy(planId) {
-    const user = Finora.getProfile();
+    var user = Finora.getProfile();
     if (!user) {
       Finora.toast("Please log in to upgrade.", "info");
-      setTimeout(() => (window.location.href = "login.html?next=prosubscription.html"), 800);
+      setTimeout(function() { window.location.href = "login.html?next=prosubscription.html"; }, 800);
       return;
     }
     // Demo checkout — just update the stored plan.
     await Finora.updateProfile({ plan: planId });
-    Finora.toast(`You're now on the ${planId} plan! (demo)`, "success");
+    Finora.toast("You're now on the " + planId + " plan! (demo)", "success");
     render();
   }
 
-  document.querySelectorAll("#billingToggle button").forEach((b) => {
-    b.addEventListener("click", () => {
-      document.querySelectorAll("#billingToggle button").forEach((x) => x.classList.remove("active"));
+  document.querySelectorAll("#billingToggle button").forEach(function(b) {
+    b.addEventListener("click", function() {
+      document.querySelectorAll("#billingToggle button").forEach(function(x) { x.classList.remove("active"); });
       b.classList.add("active");
       billing = b.dataset.billing;
       render();

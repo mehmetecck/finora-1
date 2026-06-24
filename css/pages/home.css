@@ -1,0 +1,55 @@
+/* =====================================================================
+   Finora — Home page (index.html)
+   ===================================================================== */
+
+.ticker-tape {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 0.6rem 0;
+}
+.ticker-track { display: inline-flex; gap: 2.5rem; animation: ticker-scroll 38s linear infinite; }
+.ticker-tape:hover .ticker-track { animation-play-state: paused; }
+.ticker-item { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; font-weight: 500; }
+.ticker-item .sym { color: var(--text-primary); font-weight: 700; }
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.hero { position: relative; padding: 6rem 0 4rem; overflow: hidden; }
+.hero h1 { font-weight: 800; font-size: clamp(2.4rem, 5vw, 4rem); line-height: 1.08; letter-spacing: -0.03em; }
+
+.stat-pill { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.9rem 1.1rem; }
+.stat-pill .num { font-weight: 800; font-size: 1.3rem; }
+
+.glow-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+  position: relative;
+}
+.glow-card::after {
+  content: "";
+  position: absolute; inset: -1px;
+  border-radius: var(--radius);
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(20,184,166,0.5), transparent 40%, rgba(56,189,248,0.4));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events: none;
+}
+
+.footer { background: var(--bg-secondary); border-top: 1px solid var(--border); padding: 3rem 0 1.5rem; margin-top: 4rem; }
+.footer a { color: var(--text-muted); }
+.footer a:hover { color: var(--brand); }
+
+#heroChartWrap {
+  max-width: 100%;
+  overflow: hidden;
+  position: relative;
+  height: 190px;
+}
