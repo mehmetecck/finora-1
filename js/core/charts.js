@@ -240,7 +240,7 @@ const FinoraChart = (() => {
             return g;
           },
           fill: true,
-          tension: 0.35,
+          tension: 0,
           borderWidth: opts.lineWidth != null ? opts.lineWidth : 2,
           pointRadius: 0,
           pointHoverRadius: 4,
@@ -380,7 +380,7 @@ const FinoraChart = (() => {
           borderColor: lineColor,
           backgroundColor: rgba(lineColor, 0.2),
           fill: true,
-          tension: 0.35,
+          tension: 0,
           borderWidth: 2.5,
           pointRadius: 0,
           pointHoverRadius: 4,
