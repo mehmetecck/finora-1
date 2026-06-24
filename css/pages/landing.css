@@ -1,0 +1,13 @@
+/* =====================================================================
+   Finora — Marketing landing page (index.html)
+   ===================================================================== */
+
+.hero { position: relative; padding: 6rem 0 4rem; overflow: hidden; }
+.hero h1 { font-weight: 800; font-size: clamp(2.4rem, 5vw, 4rem); line-height: 1.08; letter-spacing: -0.03em; }
+
+.stat-pill { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.9rem 1.1rem; }
+.stat-pill .num { font-weight: 800; font-size: 1.3rem; }
+
+.footer { background: var(--bg-secondary); border-top: 1px solid var(--border); padding: 3rem 0 1.5rem; margin-top: 4rem; }
+.footer a { color: var(--text-muted); }
+.footer a:hover { color: var(--brand); }

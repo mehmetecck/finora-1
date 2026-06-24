@@ -2,6 +2,23 @@
    Finora — Market page (market.html)
    ===================================================================== */
 
+.ticker-tape {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 0.6rem 0;
+}
+.ticker-track { display: inline-flex; gap: 2.5rem; animation: ticker-scroll 38s linear infinite; }
+.ticker-tape:hover .ticker-track { animation-play-state: paused; }
+.ticker-item { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; font-weight: 500; }
+.ticker-item .sym { color: var(--text-primary); font-weight: 700; }
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
 .stock-list-item {
   width: 100%;
   min-height: 60px;

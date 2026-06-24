@@ -436,7 +436,7 @@ var Finora = (function() {
   function fmtNumber(n) { return new Intl.NumberFormat("en-US").format(n || 0); }
 
   function initials(name) {
-    return (name || "U").split(/[\s@.]+/).filter(Boolean).map(function(p) { return p[0]; }).join("").slice(0, 2).toUpperCase();
+    return (name || "U").split(/[\s@.]+/).filter(function(p) { return p; }).map(function(p) { return p[0]; }).join("").slice(0, 2).toUpperCase();
   }
 
   function toast(message, type) {
@@ -537,7 +537,7 @@ var Finora = (function() {
     var color = opts.color;
     var className = opts.className != null ? opts.className : "ticker-avatar";
     var sym = (symbol || "").trim().toUpperCase();
-    var cls = [className, size].filter(Boolean).join(" ");
+    var cls = [className, size].filter(function(part) { return part; }).join(" ");
     var logo = logoFor(sym);
     if (logo) {
       return `<span class="${cls} has-logo"><img src="${logo}" alt="${sym}" loading="lazy" onerror="this.parentElement.classList.remove('has-logo');this.parentElement.textContent='${sym}';this.parentElement.style.background='${color || symbolColor(sym)}'"></span>`;
@@ -619,10 +619,10 @@ var Finora = (function() {
     authReady: authReady, register: register, login: login, loginWithGoogle: loginWithGoogle, resetPassword: resetPassword, logout: logout,
     getProfile: getProfile, updateProfile: updateProfile, changePassword: changePassword, deleteAccount: deleteAccount,
     requireAuth: requireAuth, mapAuthError: mapAuthError,
-    getWatchlist: getWatchlist, addToWatchlist: addToWatchlist, removeFromWatchlist: removeFromWatchlist,
+    getWatchlist: getWatchlist, removeFromWatchlist: removeFromWatchlist,
     isInWatchlist: isInWatchlist, toggleWatchlist: toggleWatchlist,
     fmtMoney: fmtMoney, fmtNumber: fmtNumber, initials: initials, toast: toast,
-    emptyState: emptyState, apiUnavailableState: apiUnavailableState, emptyRow: emptyRow, symbolColor: symbolColor, logoFor: logoFor, tickerAvatar: tickerAvatar,
+    emptyState: emptyState, apiUnavailableState: apiUnavailableState, emptyRow: emptyRow, tickerAvatar: tickerAvatar,
     API_UNAVAILABLE_MSG: API_UNAVAILABLE_MSG,
     isFirebase: USE_FIREBASE,
   };

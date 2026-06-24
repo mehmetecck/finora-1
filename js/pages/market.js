@@ -29,6 +29,8 @@ document.addEventListener("DOMContentLoaded", function() {
     initBrowse();
   }
 
+  loadTicker();
+
   function showBrowseView() {
     browseEl.classList.remove("d-none");
     detailViewEl.classList.add("d-none");
@@ -58,6 +60,30 @@ document.addEventListener("DOMContentLoaded", function() {
     loadIndices();
     loadTrending();
     loadMovers();
+  }
+
+  async function loadTicker() {
+    var tape = document.querySelector(".ticker-tape");
+    var track = document.getElementById("tickerTrack");
+    if (!track || !tape) return;
+    try {
+      var stocks = await FinoraAPI.getTrending();
+      if (!stocks.length) { tape.classList.add("d-none"); return; }
+      if (stocks.every(function(s) { return s.price == null; })) { tape.classList.add("d-none"); return; }
+      function item(s) {
+        var up = s.change >= 0;
+        return `<span class="ticker-item">
+            <span class="sym">${s.symbol}</span>
+            <span>${Finora.fmtMoney(s.price)}</span>
+            <span class="${up ? "text-bull" : "text-bear"}">
+              <i class="bi bi-caret-${up ? "up" : "down"}-fill"></i>${Math.abs(s.change).toFixed(2)}%
+            </span>
+          </span>`;
+      }
+      track.innerHTML = stocks.map(item).join("").repeat(2);
+    } catch (err) {
+      tape.classList.add("d-none");
+    }
   }
 
   function handleBrowseSearch() {
@@ -270,12 +296,16 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function mergeCompanies(primary, secondary) {
-    var bySymbol = new Map();
+    var seen = {};
+    var result = [];
     var combined = primary.concat(secondary);
     combined.forEach(function(item) {
-      if (item && item.symbol && !bySymbol.has(item.symbol)) bySymbol.set(item.symbol, item);
+      if (item && item.symbol && !seen[item.symbol]) {
+        seen[item.symbol] = true;
+        result.push(item);
+      }
     });
-    return Array.from(bySymbol.values());
+    return result;
   }
 
   async function loadDetail(symbol) {
