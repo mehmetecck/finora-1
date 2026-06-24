@@ -21,18 +21,6 @@ document.addEventListener("DOMContentLoaded", async function() {
   var switchHint = document.getElementById("switchHint");
   var tabs = document.querySelectorAll(".auth-tabs button");
 
-  /* ---------------- Demo mode (no Firebase config) ----------------- */
-  if (!Finora.isFirebase) {
-    var note = document.createElement("div");
-    note.className = "mb-3 p-2 px-3 border-finora";
-    note.style.cssText = "background:var(--bg-elevated);color:var(--text-secondary);font-size:.82rem;border-radius:10px;";
-    note.innerHTML = `<i class="bi bi-info-circle text-accent me-1"></i> Demo mode — test login is prefilled. Just click <strong>Log in</strong>.`;
-    var tabsEl = document.querySelector(".auth-tabs");
-    if (tabsEl) tabsEl.before(note);
-    loginForm.email.value = "test@finora.com";
-    loginForm.password.value = "test1234";
-  }
-
   /* --------------------------- Tab switching ----------------------- */
   function setMode(mode) {
     var isLogin = mode === "login";
@@ -115,10 +103,19 @@ document.addEventListener("DOMContentLoaded", async function() {
   function checkMatch() {
     var a = pwInput.value;
     var b = confirmInput.value;
-    if (!b) { matchHint.textContent = ""; return true; }
+    var container = confirmInput.closest(".mb-2, .mb-3");
+    if (container) {
+      container.querySelectorAll(".invalid-feedback").forEach(function(f) { f.remove(); });
+    }
+    if (!b) {
+      matchHint.textContent = "";
+      confirmInput.classList.remove("is-invalid");
+      return true;
+    }
     var ok = a === b;
     matchHint.textContent = ok ? "Passwords match." : "Passwords do not match.";
     matchHint.style.color = ok ? "var(--bull)" : "var(--bear)";
+    confirmInput.classList.toggle("is-invalid", !ok);
     return ok;
   }
   confirmInput.addEventListener("input", checkMatch);
@@ -142,6 +139,7 @@ document.addEventListener("DOMContentLoaded", async function() {
   function clearErrors(form) {
     form.querySelectorAll(".is-invalid").forEach(function(i) { i.classList.remove("is-invalid"); });
     form.querySelectorAll(".invalid-feedback").forEach(function(f) { f.remove(); });
+    if (form === registerForm && matchHint) matchHint.textContent = "";
   }
 
   /* ------------------------- Submit helpers ----------------------- */
@@ -180,10 +178,11 @@ document.addEventListener("DOMContentLoaded", async function() {
           return;
         }
 
-        var message = Finora.isFirebase
-          ? "Password reset email sent. Check your inbox."
-          : "Demo mode: password reset emails require Firebase config.";
-        Finora.toast(message, Finora.isFirebase ? "success" : "info");
+        if (!Finora.isFirebase) {
+          Finora.toast("Password reset requires email sign-in to be configured.", "info");
+          return;
+        }
+        Finora.toast("Password reset email sent. Check your inbox.", "success");
       } finally {
         resetInFlight = false;
         resetLink.classList.remove("disabled");
@@ -233,8 +232,14 @@ document.addEventListener("DOMContentLoaded", async function() {
     if (!isEmail(email)) { fieldError(registerForm.email, "Enter a valid email address (must include @)."); valid = false; }
     if (!password) { fieldError(registerForm.password, "Please create a password."); valid = false; }
     else if (password.length < MIN_PASSWORD) { fieldError(registerForm.password, "Password must be at least " + MIN_PASSWORD + " characters."); valid = false; }
-    // Passwords must match before submission.
-    if (password !== confirm) { fieldError(registerForm.confirm, "Passwords do not match."); valid = false; }
+    if (!confirm) {
+      fieldError(registerForm.confirm, "Please confirm your password.");
+      matchHint.textContent = "";
+      valid = false;
+    } else if (password !== confirm) {
+      checkMatch();
+      valid = false;
+    }
     if (!terms) { Finora.toast("Please accept the Terms to continue.", "error"); valid = false; }
     if (!valid) return;
 

@@ -82,7 +82,7 @@ document.addEventListener("DOMContentLoaded", function() {
       return;
     }
     await Finora.updateProfile({ plan: planId });
-    Finora.toast("You're now on the " + planId + " plan! (demo)", "success");
+    Finora.toast("You're now on the " + planId + " plan!", "success");
     render();
   }
 

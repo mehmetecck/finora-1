@@ -37,7 +37,7 @@ const firebaseSdkReady =
   typeof firebase.auth === "function";
 
 // Detect whether real Web app credentials have been added yet. Until then,
-// the app falls back to local demo auth so login can still be tested.
+// the app falls back to local auth when Firebase is not configured.
 window.FIREBASE_CONFIGURED =
   firebaseSdkReady &&
   !hasAdminCredential &&
@@ -56,5 +56,5 @@ if (window.FIREBASE_CONFIGURED) {
 } else if (!firebaseSdkReady) {
   console.error("[Finora] Firebase SDK did not load. Check the gstatic Firebase script tags before firebase-config.js.");
 } else {
-  console.info("[Finora] Firebase not configured - using local demo auth. Test login: test@finora.com / test1234");
+  console.info("[Finora] Firebase not configured — using local auth.");
 }

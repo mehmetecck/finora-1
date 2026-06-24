@@ -2,18 +2,12 @@
    Finora — Profile page (profile.html)
    ===================================================================== */
 
-.profile-cover {
-  height: 160px; border-radius: var(--radius);
-  background: var(--premium-gradient);
-  background-size: 200% 200%; animation: shift 8s ease infinite;
-  position: relative;
-}
 .profile-avatar {
   width: 110px; height: 110px; border-radius: 50%;
   background: var(--bg-elevated); border: 4px solid var(--bg-main);
   display: flex; align-items: center; justify-content: center;
   font-size: 2.4rem; font-weight: 800; color: var(--brand);
-  margin-top: -64px;
+  flex-shrink: 0;
 }
 .profile-nav .list-group-item {
   background: transparent; border: none; color: var(--text-secondary);
@@ -34,6 +28,26 @@
 .tab-pane-fade { display: none; }
 .tab-pane-fade.show { display: block; animation: fadeIn 0.3s ease; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+#passwordForm .btn-social {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+#passwordForm .btn-social:hover {
+  border-color: var(--brand);
+  color: var(--text-primary);
+}
+
+.profile-currency-toggle {
+  width: 200px;
+  flex-shrink: 0;
+}
+.profile-currency-toggle button {
+  flex: 1;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
 
 #portfolioChartWrap {
   max-width: 100%;

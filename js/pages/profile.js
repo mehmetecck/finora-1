@@ -34,11 +34,46 @@ document.addEventListener("DOMContentLoaded", async function() {
     }
     var holdings = portfolio.holdings || [];
     var portfolioValue = holdings.reduce(function(sum, h) { return sum + h.shares * h.price; }, 0);
+    var invested = holdings.reduce(function(sum, h) { return sum + h.shares * h.avg; }, 0);
+    var totalReturn = invested ? ((portfolioValue - invested) / invested) * 100 : 0;
+    var todayPL = holdings.reduce(function(sum, h) { return sum + h.shares * h.price * ((h.dayChange || 0) / 100); }, 0);
+    var sectors = holdings.reduce(function(set, h) {
+      if (h.sector) set[h.sector] = true;
+      return set;
+    }, {});
+    var sectorCount = Object.keys(sectors).length;
 
     document.getElementById("statPortfolio").textContent = Finora.fmtMoney(portfolioValue);
     document.getElementById("statHoldings").textContent = holdings.length;
+    document.getElementById("statHoldingsSub").textContent = holdings.length
+      ? (sectorCount ? "Across " + sectorCount + " sector" + (sectorCount === 1 ? "" : "s") : "Holdings loaded")
+      : "No holdings yet";
 
-    renderHoldings(holdings);
+    var trBadge = document.getElementById("statPortfolioBadge");
+    if (holdings.length) {
+      var trUp = totalReturn >= 0;
+      trBadge.className = "badge " + (trUp ? "badge-bull" : "badge-bear") + " mt-1";
+      trBadge.innerHTML = "<i class=\"bi bi-caret-" + (trUp ? "up" : "down") + "-fill\"></i> " + (trUp ? "+" : "") + totalReturn.toFixed(2) + "%";
+      trBadge.classList.remove("d-none");
+    } else {
+      trBadge.classList.add("d-none");
+    }
+
+    var todayEl = document.getElementById("statTodayPL");
+    var plBadge = document.getElementById("statTodayPLBadge");
+    if (holdings.length) {
+      var plUp = todayPL >= 0;
+      todayEl.textContent = Finora.fmtMoney(todayPL);
+      todayEl.className = "value " + (plUp ? "text-bull" : "text-bear");
+      plBadge.className = "badge " + (plUp ? "badge-bull" : "badge-bear") + " mt-1";
+      plBadge.innerHTML = "<i class=\"bi bi-caret-" + (plUp ? "up" : "down") + "-fill\"></i> " + (plUp ? "+" : "") + Finora.fmtMoney(todayPL);
+      plBadge.classList.remove("d-none");
+    } else {
+      todayEl.textContent = "—";
+      todayEl.className = "value";
+      plBadge.classList.add("d-none");
+    }
+
     drawChart(uid);
     loadActivity(uid);
   }
@@ -56,37 +91,10 @@ document.addEventListener("DOMContentLoaded", async function() {
       history.replaceState(null, "", "#" + b.dataset.target);
     });
   });
-  if (location.hash) showPane(location.hash.slice(1));
-
-  /* ------------------------- Holdings table ----------------------- */
-  function renderHoldings(holdings) {
-    var hbody = document.getElementById("holdingsBody");
-    if (!holdings.length) { hbody.innerHTML = Finora.emptyRow(6, "No holdings yet."); return; }
-    hbody.innerHTML = holdings
-      .map(function(h) {
-        var value = h.shares * h.price;
-        var cost = h.shares * h.avg;
-        var ret = value - cost;
-        var retPct = cost ? (ret / cost) * 100 : 0;
-        var up = ret >= 0;
-        return `<tr>
-            <td>
-              <div class="d-flex align-items-center gap-3">
-                ${Finora.tickerAvatar(h.symbol, { className: "holding-logo", color: h.color })}
-                <div><div class="fw-bold text-white">${h.symbol}</div><div class="text-muted-2 small">${h.name || ""}</div></div>
-              </div>
-            </td>
-            <td class="text-end">${h.shares}</td>
-            <td class="text-end">${Finora.fmtMoney(h.avg)}</td>
-            <td class="text-end text-white">${Finora.fmtMoney(h.price)}</td>
-            <td class="text-end fw-semibold text-white">${Finora.fmtMoney(value)}</td>
-            <td class="text-end">
-              <div class="fw-semibold ${up ? "text-bull" : "text-bear"}">${up ? "+" : ""}${Finora.fmtMoney(ret)}</div>
-              <div class="small ${up ? "text-bull" : "text-bear"}">${up ? "+" : ""}${retPct.toFixed(2)}%</div>
-            </td>
-          </tr>`;
-      })
-      .join("");
+  if (location.hash) {
+    var target = location.hash.slice(1);
+    if (target === "portfolio") target = "overview";
+    showPane(target);
   }
 
   /* ------------------------ Recent activity ----------------------- */
@@ -169,8 +177,44 @@ document.addEventListener("DOMContentLoaded", async function() {
     }
   });
 
+  /* ------------------------ Currency preference ----------------- */
+  var currencyToggle = document.getElementById("currencyToggle");
+  function setCurrencyButtons(code) {
+    currencyToggle.querySelectorAll("button").forEach(function(btn) {
+      btn.classList.toggle("active", btn.dataset.currency === code);
+    });
+  }
+  setCurrencyButtons(user.currency || "USD");
+
+  currencyToggle.querySelectorAll("button").forEach(function(btn) {
+    btn.addEventListener("click", async function() {
+      var next = btn.dataset.currency;
+      if (next === Finora.getCurrency()) return;
+      try {
+        var updated = await Finora.updateProfile({ currency: next });
+        if (!updated) return;
+        setCurrencyButtons(updated.currency);
+        document.getElementById("buyingPower").textContent = Finora.fmtMoney(updated.balance);
+        document.getElementById("statBuying").textContent = Finora.fmtMoney(updated.balance);
+        loadOverview(fbUser.uid);
+        Finora.toast("Currency set to " + (next === "EUR" ? "euros (€)" : "US dollars ($)") + ".", "success");
+      } catch (err) {
+        Finora.toast(Finora.mapAuthError(err.code), "error");
+      }
+    });
+  });
+
   /* ------------------------- Password ----------------------------- */
   var pwForm = document.getElementById("passwordForm");
+  pwForm.querySelectorAll("[data-toggle-pw]").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      var input = btn.parentElement.querySelector("input");
+      var icon = btn.querySelector("i");
+      var show = input.type === "password";
+      input.type = show ? "text" : "password";
+      icon.className = show ? "bi bi-eye-slash" : "bi bi-eye";
+    });
+  });
   pwForm.addEventListener("submit", async function(e) {
     e.preventDefault();
     if (pwForm.next.value.length < 6) return Finora.toast("New password must be at least 6 characters.", "error");

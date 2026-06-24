@@ -9,8 +9,8 @@
 
    Two auth backends are supported and selected automatically:
      • Firebase Authentication  — when js/core/firebase-config.js has real keys.
-     • Local demo auth (localStorage) — fallback for testing before config.
-   Profile extras (plan, balance, phone, country, bio) live in localStorage.
+     • Local auth (localStorage) — fallback when Firebase is not configured.
+   Profile extras (plan, balance, phone, country, bio, currency) live in localStorage.
    ===================================================================== */
 
 var Finora = (function() {
@@ -107,7 +107,7 @@ var Finora = (function() {
   }
 
   /* ===================================================================
-     Local demo auth backend (localStorage)
+     Local auth backend (localStorage)
      =================================================================== */
   var Local = (function() {
     function getUsers() { return JSON.parse(localStorage.getItem(LOCAL_USERS) || "[]"); }
@@ -126,19 +126,6 @@ var Finora = (function() {
       localStorage.removeItem(LOCAL_SESSION);
       sessionStorage.removeItem(LOCAL_SESSION);
     }
-
-    // Seed a ready-to-use test account once.
-    (function seed() {
-      var users = getUsers();
-      if (!users.some(function(u) { return u.email === "test@finora.com"; })) {
-        users.push({
-          uid: "local-test", name: "Test User", email: "test@finora.com",
-          password: "test1234", plan: "Free", balance: 0,
-          joined: new Date().toISOString(),
-        });
-        saveUsers(users);
-      }
-    })();
 
     function current() {
       var uid = getSessionUid();
@@ -159,7 +146,7 @@ var Finora = (function() {
       }
       users.push({
         uid: "local-" + Date.now(), name: name, email: email, password: password,
-        plan: "Free", balance: 0, joined: new Date().toISOString(),
+        plan: "Free", balance: 0, currency: "USD", joined: new Date().toISOString(),
       });
       saveUsers(users);
       // Match Firebase flow: do NOT auto sign-in; user logs in next.
@@ -234,7 +221,7 @@ var Finora = (function() {
   /* ----------------- Session / authentication token ----------------
      `idToken` is the credential used to authenticate requests to the
      backend / market data API. With Firebase it's a JWT issued on login
-     and refreshed automatically; in local demo mode it's a stand-in id.
+     and refreshed automatically; in local auth mode it's a stand-in id.
      ----------------------------------------------------------------- */
   var idToken = null;
 
@@ -244,7 +231,7 @@ var Finora = (function() {
     if (USE_FIREBASE) {
       idToken = await currentUser.getIdToken(forceRefresh); // capture Firebase ID token
     } else {
-      idToken = "local-session:" + currentUser.uid; // demo session token
+      idToken = "local-session:" + currentUser.uid;
     }
     return idToken;
   }
@@ -281,7 +268,7 @@ var Finora = (function() {
     try {
       var cred = await auth.createUserWithEmailAndPassword(email, password);
       if (name) await cred.user.updateProfile({ displayName: name });
-      setExtras(cred.user.uid, { plan: "Free", balance: 0 });
+      setExtras(cred.user.uid, { plan: "Free", balance: 0, currency: "USD" });
       await auth.signOut();
       return { ok: true };
     } catch (e) {
@@ -323,7 +310,7 @@ var Finora = (function() {
       provider.setCustomParameters({ prompt: "select_account" });
       var cred = await auth.signInWithPopup(provider);
       var extras = getExtras(cred.user.uid);
-      if (!extras.plan) setExtras(cred.user.uid, { plan: "Free", balance: 0 });
+      if (!extras.plan) setExtras(cred.user.uid, { plan: "Free", balance: 0, currency: "USD" });
       currentUser = cred.user;
       await captureToken(); // capture the auth token & start the session
       return { ok: true, user: cred.user, token: idToken };
@@ -356,6 +343,10 @@ var Finora = (function() {
     return plan === "Pro" ? "Premium" : (plan || "Free");
   }
 
+  function normalizeCurrency(currency) {
+    return currency === "EUR" ? "EUR" : "USD";
+  }
+
   function getProfile() {
     if (!currentUser) return null;
     if (!USE_FIREBASE) {
@@ -363,6 +354,7 @@ var Finora = (function() {
       return {
         uid: u.uid, name: u.name, email: u.email, joined: u.joined,
         plan: normalizePlan(u.plan), balance: u.balance != null ? u.balance : 0,
+        currency: normalizeCurrency(u.currency),
         phone: u.phone || "", country: u.country || "", bio: u.bio || "",
       };
     }
@@ -376,6 +368,7 @@ var Finora = (function() {
       joined: creationTime,
       plan: normalizePlan(extras.plan),
       balance: extras.balance != null ? extras.balance : 0,
+      currency: normalizeCurrency(extras.currency),
       phone: extras.phone || "",
       country: extras.country || "",
       bio: extras.bio || "",
@@ -428,9 +421,16 @@ var Finora = (function() {
   }
 
   /* --------------------------- Utilities --------------------------- */
+  function getCurrency() {
+    var profile = getProfile();
+    return profile ? profile.currency : "USD";
+  }
+
   function fmtMoney(n, currency) {
-    if (currency === undefined) currency = "USD";
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: currency, maximumFractionDigits: 2 }).format(n || 0);
+    if (currency === undefined) currency = getCurrency();
+    else currency = normalizeCurrency(currency);
+    var locale = currency === "EUR" ? "de-DE" : "en-US";
+    return new Intl.NumberFormat(locale, { style: "currency", currency: currency, maximumFractionDigits: 2 }).format(n || 0);
   }
 
   function fmtNumber(n) { return new Intl.NumberFormat("en-US").format(n || 0); }
@@ -566,7 +566,9 @@ var Finora = (function() {
         </a>`;
   }
 
-  function signedInNavMarkup(pending) {
+  function signedInNavMarkup(pending, options) {
+    if (!options) options = {};
+    var hidePremium = !!options.hidePremium;
     var pendingCls = pending ? " nav-auth-pending" : "";
     var btnAttrs = pending
       ? ' class="nav-user-btn" type="button" tabindex="-1" aria-hidden="true"'
@@ -574,6 +576,7 @@ var Finora = (function() {
     var menu = pending ? "" : `
             <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark border-finora">
               <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person me-2"></i>My Profile</a></li>
+              <li><a class="dropdown-item" href="portfolio.html"><i class="bi bi-briefcase me-2"></i>My Portfolio</a></li>
               <li><a class="dropdown-item" href="watchlist.html"><i class="bi bi-star me-2"></i>My Watchlist</a></li>
             </ul>`;
     return `<div class="d-flex align-items-center gap-3${pendingCls}">
@@ -582,24 +585,37 @@ var Finora = (function() {
               <i class="bi bi-person-fill" aria-hidden="true"></i>
             </button>${menu}
           </div>
-          ${navPremiumMarkup()}
+          ${hidePremium ? "" : navPremiumMarkup()}
         </div>`;
+  }
+
+  function isMinimalNavPage() {
+    var slot = document.querySelector("[data-nav-auth]");
+    return !!(slot && slot.hasAttribute("data-nav-minimal"));
   }
 
   function renderNavAuthPending() {
     var slot = document.querySelector("[data-nav-auth]");
     if (!slot || slot.dataset.navAuthState === "ready") return;
-    slot.innerHTML = signedInNavMarkup(true);
+    slot.innerHTML = signedInNavMarkup(true, { hidePremium: isMinimalNavPage() });
     slot.dataset.navAuthState = "pending";
   }
 
   function renderNavAuth() {
     var slot = document.querySelector("[data-nav-auth]");
     if (!slot) return;
+    var minimal = isMinimalNavPage();
     var profile = getProfile();
 
     if (profile) {
-      slot.innerHTML = signedInNavMarkup(false);
+      slot.innerHTML = signedInNavMarkup(false, { hidePremium: minimal });
+    } else if (minimal) {
+      slot.innerHTML = `
+        <div class="d-flex align-items-center gap-3">
+          <a href="login.html" class="nav-user-btn" aria-label="Log in">
+            <i class="bi bi-person-fill" aria-hidden="true"></i>
+          </a>
+        </div>`;
     } else {
       slot.innerHTML = `
         <div class="d-flex align-items-center gap-3">
@@ -678,7 +694,7 @@ var Finora = (function() {
     requireAuth: requireAuth, mapAuthError: mapAuthError,
     getWatchlist: getWatchlist, removeFromWatchlist: removeFromWatchlist,
     isInWatchlist: isInWatchlist, toggleWatchlist: toggleWatchlist,
-    fmtMoney: fmtMoney, fmtNumber: fmtNumber, initials: initials, toast: toast,
+    fmtMoney: fmtMoney, fmtNumber: fmtNumber, getCurrency: getCurrency, initials: initials, toast: toast,
     emptyState: emptyState, apiUnavailableState: apiUnavailableState, emptyRow: emptyRow, tickerAvatar: tickerAvatar,
     API_UNAVAILABLE_MSG: API_UNAVAILABLE_MSG,
     isFirebase: USE_FIREBASE,
