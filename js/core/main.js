@@ -378,12 +378,17 @@ const Finora = (() => {
 
   /* ----------------------- UI state helpers ------------------------ */
   const NO_DATA_MSG = "Connect a market data API to load this.";
+  const API_UNAVAILABLE_MSG = "API is currently unavailable, please try again later or reload the page.";
 
   function emptyState(message = NO_DATA_MSG, icon = "bi-database-x") {
     return `<div class="text-center text-muted-2 py-5">
         <i class="bi ${icon} d-block mb-2" style="font-size:1.9rem;opacity:.55"></i>
         <div>${message}</div>
       </div>`;
+  }
+
+  function apiUnavailableState(icon = "bi-wifi-off") {
+    return emptyState(API_UNAVAILABLE_MSG, icon);
   }
 
   function emptyRow(cols, message = NO_DATA_MSG) {
@@ -517,7 +522,8 @@ const Finora = (() => {
     getProfile, updateProfile, changePassword, deleteAccount,
     requireAuth, mapAuthError, getToken,
     fmtMoney, fmtNumber, initials, toast,
-    emptyState, emptyRow, symbolColor, logoFor, tickerAvatar,
+    emptyState, apiUnavailableState, emptyRow, symbolColor, logoFor, tickerAvatar,
+    API_UNAVAILABLE_MSG,
     isFirebase: USE_FIREBASE,
   };
 })();

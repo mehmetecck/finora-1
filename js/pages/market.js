@@ -17,6 +17,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let searchTimer = null;
   let searchRun = 0;
   let detailRun = 0;
+  let chartType = "line";
+  let chartRange = "1M";
 
   init();
 
@@ -38,11 +40,11 @@ document.addEventListener("DOMContentLoaded", () => {
       if (searchEl.value.trim()) {
         handleSearchInput();
       } else {
-        listEl.innerHTML = `<div class="text-muted-2 small p-2">Search for a company to load market data.</div>`;
+        listEl.innerHTML = `<div class="text-muted-2 small p-2">${FinoraAPI.isConfigured() ? Finora.API_UNAVAILABLE_MSG : "Search for a company to load market data."}</div>`;
       }
       if (!activeSymbol) {
         detailEl.innerHTML = FinoraAPI.isConfigured()
-          ? Finora.emptyState("Search for a company to see market data.", "bi-search")
+          ? Finora.apiUnavailableState()
           : marketConfigState();
       }
     } else {
@@ -81,7 +83,9 @@ document.addEventListener("DOMContentLoaded", () => {
       } catch {
         if (run !== searchRun) return;
         renderList(filtered);
-        if (!filtered.length) listEl.innerHTML = `<div class="text-muted-2 small p-2">Search unavailable right now.</div>`;
+        if (!filtered.length) {
+          listEl.innerHTML = `<div class="text-muted-2 small p-2">${Finora.API_UNAVAILABLE_MSG}</div>`;
+        }
       }
     }, 350);
   }
@@ -154,7 +158,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (run !== detailRun) return;
     if (!s) {
       detailEl.innerHTML = FinoraAPI.isConfigured()
-        ? Finora.emptyState(`Real market data for ${symbol.toUpperCase()} is unavailable right now.`, "bi-wifi-off")
+        ? Finora.apiUnavailableState()
         : marketConfigState();
       return;
     }
@@ -200,11 +204,21 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="card-finora p-4 mb-4">
         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
           <h6 class="fw-bold mb-0">Price chart</h6>
-          <div class="btn-group btn-group-sm" id="rangeBtns">
-            ${["1D", "1W", "1M", "1Y"].map((r) => `<button class="btn btn-ghost ${r === "1M" ? "active" : ""}" data-range="${r}">${r}</button>`).join("")}
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="chart-type-toggle" id="chartTypeToggle" role="group" aria-label="Chart type">
+              <button type="button" class="chart-type-btn ${chartType === "line" ? "active" : ""}" data-chart-type="line" title="Line chart" aria-pressed="${chartType === "line"}">
+                <i class="bi bi-graph-up"></i>
+              </button>
+              <button type="button" class="chart-type-btn ${chartType === "candle" ? "active" : ""}" data-chart-type="candle" title="Candlestick chart" aria-pressed="${chartType === "candle"}">
+                <i class="bi bi-bar-chart-line"></i>
+              </button>
+            </div>
+            <div class="btn-group btn-group-sm" id="rangeBtns">
+              ${["1D", "1W", "1M", "1Y"].map((r) => `<button class="btn btn-ghost ${r === chartRange ? "active" : ""}" data-range="${r}">${r}</button>`).join("")}
+            </div>
           </div>
         </div>
-        <div id="chartWrap"><canvas id="stockChart" height="260"></canvas></div>
+        <div id="chartWrap"><canvas id="stockChart"></canvas></div>
       </div>
 
       <div class="row g-4">
@@ -240,7 +254,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     renderKeyInfo(s);
     bindActions(s);
-    drawChart(s.symbol, "1M");
+    chartRange = "1M";
+    drawChart(s.symbol, chartRange);
     loadHistory(s.symbol);
     loadNews(s.symbol);
 
@@ -248,7 +263,20 @@ document.addEventListener("DOMContentLoaded", () => {
       btn.addEventListener("click", () => {
         detailEl.querySelectorAll("#rangeBtns .btn").forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
-        drawChart(s.symbol, btn.dataset.range);
+        chartRange = btn.dataset.range;
+        drawChart(s.symbol, chartRange);
+      });
+    });
+
+    detailEl.querySelectorAll("#chartTypeToggle [data-chart-type]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        chartType = btn.dataset.chartType;
+        detailEl.querySelectorAll("#chartTypeToggle .chart-type-btn").forEach((b) => {
+          const active = b.dataset.chartType === chartType;
+          b.classList.toggle("active", active);
+          b.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+        drawChart(s.symbol, chartRange);
       });
     });
   }
@@ -273,26 +301,37 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function drawChart(symbol, range) {
     const wrap = document.getElementById("chartWrap");
-    let data = [];
+    if (!wrap) return;
+
+    chartRange = range;
+
+    let ohlc = [];
     try {
-      data = await FinoraAPI.getHistory(symbol, range);
+      ohlc = await FinoraAPI.getOHLC(symbol, range);
     } catch {
-      data = [];
-    }
-    if (!data.length) {
-      wrap.innerHTML = Finora.emptyState("Chart data unavailable", "bi-graph-up");
+      wrap.innerHTML = Finora.apiUnavailableState("bi-graph-up");
       return;
     }
-    wrap.innerHTML = `<canvas id="stockChart" height="260"></canvas>`;
-    const up = data[data.length - 1] >= data[0];
-    FinoraChart.line(document.getElementById("stockChart"), data, {
-      color: up ? C("--bull") : C("--bear"),
-      lineWidth: 2.5,
-      fillAlpha: 0.25,
-      axis: true,
-      formatY: (v) => "$" + v.toFixed(0),
-      tooltip: (v) => Finora.fmtMoney(v),
-    });
+    if (!ohlc.length) {
+      wrap.innerHTML = Finora.apiUnavailableState("bi-graph-up");
+      return;
+    }
+
+    wrap.innerHTML = `<canvas id="stockChart"></canvas>`;
+    FinoraChart.stockChart(
+      document.getElementById("stockChart"),
+      {
+        mode: chartType,
+        ohlc,
+        closes: ohlc.map((b) => b.close),
+      },
+      {
+        bull: C("--bull"),
+        bear: C("--bear"),
+        formatY: (v) => "$" + Number(v).toFixed(2),
+        formatTooltip: (v) => Finora.fmtMoney(v),
+      }
+    );
   }
 
   async function loadHistory(symbol) {
@@ -301,9 +340,10 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       data = await FinoraAPI.getHistory(symbol, "1M");
     } catch {
-      data = [];
+      body.innerHTML = Finora.emptyRow(3, Finora.API_UNAVAILABLE_MSG);
+      return;
     }
-    if (!data.length) { body.innerHTML = Finora.emptyRow(3); return; }
+    if (!data.length) { body.innerHTML = Finora.emptyRow(3, Finora.API_UNAVAILABLE_MSG); return; }
     const today = new Date();
     const rows = data.slice(-10).reverse();
     body.innerHTML = rows
@@ -328,7 +368,8 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       news = await FinoraAPI.getNews(symbol);
     } catch {
-      news = [];
+      wrap.innerHTML = Finora.apiUnavailableState("bi-newspaper");
+      return;
     }
     if (!news.length) { wrap.innerHTML = Finora.emptyState("No news available", "bi-newspaper"); return; }
     wrap.innerHTML = news
@@ -337,7 +378,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="news-tag">${n.tag || "News"}</div>
           <div class="min-w-0">
             <div class="fw-semibold text-white text-truncate">${n.title}</div>
-            <div class="text-muted-2 small">${n.source || ""}${n.time ? " - " + n.time : ""}</div>
+            <div class="text-muted-2 small text-truncate">${n.source || ""}${n.time ? " - " + n.time : ""}</div>
           </div>
         </a>`
       )

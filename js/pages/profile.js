@@ -120,10 +120,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     try {
       data = await FinoraAPI.getPortfolioHistory(uid, "1M");
     } catch {
-      data = [];
+      wrap.innerHTML = Finora.apiUnavailableState("bi-graph-up");
+      return;
     }
     if (!data.length) {
-      wrap.innerHTML = Finora.emptyState("Performance data unavailable", "bi-graph-up");
+      wrap.innerHTML = Finora.emptyState("No performance data yet", "bi-graph-up");
       return;
     }
     wrap.innerHTML = `<canvas id="portfolioChart" height="110"></canvas>`;

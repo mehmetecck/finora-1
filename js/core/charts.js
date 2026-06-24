@@ -1,233 +1,264 @@
 /* =====================================================================
-   Finora — FinoraChart
-   Tiny dependency-free charting helper (replaces Chart.js).
-   Pure vanilla <canvas> drawing: line charts + sparklines, Hi-DPI aware,
-   responsive, with an optional hover tooltip.
-
-   Public API:
-     FinoraChart.line(canvas, data, options)
-     FinoraChart.sparkline(canvas, data, color, options)
-
-   options:
-     color       stroke/fill color (hex)        default "#38BDF8"
-     lineWidth   line thickness                 default 2
-     fillAlpha   gradient fill opacity (0..1)    default 0.25
-     responsive  fit to container width         default true
-     axis        draw y-grid + labels           default false
-     formatY     fn(value) -> label             default String
-     tooltip     fn(value, index) -> HTML       enables hover tooltip
+   Finora — FinoraChart (Chart.js wrapper)
+   Line, candlestick, sparkline, and doughnut charts for the app.
+   Requires Chart.js and chartjs-adapter-date-fns (market candlesticks).
    ===================================================================== */
 
 const FinoraChart = (() => {
-  let registry = [];
-  let resizeBound = false;
+  const instances = new Map();
 
-  /* Re-render responsive charts (debounced) when the window resizes. */
-  function bindResize() {
-    if (resizeBound) return;
-    resizeBound = true;
-    let t;
-    window.addEventListener("resize", () => {
-      clearTimeout(t);
-      t = setTimeout(() => {
-        registry = registry.filter((r) => document.body.contains(r.canvas));
-        registry.forEach((r) => r.render());
-      }, 150);
+  function barTimestamp(dateStr) {
+    if (!dateStr) return dateStr;
+    if (typeof dateStr === "number") return dateStr;
+    return new Date(String(dateStr) + "T12:00:00").getTime();
+  }
+
+  function normalizeOhlc(ohlc) {
+    return (ohlc || []).map(function (bar) {
+      return {
+        date: bar.date,
+        x: barTimestamp(bar.date),
+        open: Number(bar.open),
+        high: Number(bar.high),
+        low: Number(bar.low),
+        close: Number(bar.close),
+      };
+    }).filter(function (bar) {
+      return Number.isFinite(bar.close) && Number.isFinite(bar.open)
+        && Number.isFinite(bar.high) && Number.isFinite(bar.low);
     });
   }
 
-  /* Convert "#RRGGBB" / "#RGB" to an rgba() string. */
-  function rgba(hex, alpha) {
-    let h = (hex || "").trim().replace("#", "");
-    if (h.length === 3) h = h.split("").map((c) => c + c).join("");
-    const n = parseInt(h, 16);
-    if (Number.isNaN(n)) return hex; // already rgb/named — return as-is
-    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  }
+  /* Draw OHLC candles plus a vertical hover crosshair. */
+  const candlestickPlugin = {
+    id: "finoraCandlestick",
+    afterEvent: function (chart, args) {
+      if (!chart.$finoraOhlc || !chart.$finoraOhlc.length) return;
+      var event = args.event;
+      if (event.type !== "mousemove" && event.type !== "mouseout") return;
 
-  /* Size the canvas backing store for crisp rendering on Hi-DPI screens. */
-  function setup(canvas, responsive) {
-    const dpr = window.devicePixelRatio || 1;
-    if (!canvas.dataset.finoraCssHeight) {
-      canvas.dataset.finoraCssHeight = String(parseInt(canvas.getAttribute("height"), 10) || canvas.clientHeight || 150);
-    }
-    const cssH = parseInt(canvas.dataset.finoraCssHeight, 10) || 150;
-    let cssW;
-    if (responsive) {
-      const parentW = canvas.parentElement ? canvas.parentElement.getBoundingClientRect().width : 0;
-      canvas.style.width = "100%";
-      canvas.style.display = "block";
-      cssW = Math.max(1, Math.floor(parentW || canvas.clientWidth || 600));
-    } else {
-      cssW = parseInt(canvas.getAttribute("width"), 10) || canvas.clientWidth || 120;
-    }
-    canvas.style.height = cssH + "px";
-    canvas.width = Math.round(cssW * dpr);
-    canvas.height = Math.round(cssH * dpr);
-    const ctx = canvas.getContext("2d");
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, cssW, cssH);
-    return { ctx, w: cssW, h: cssH };
-  }
-
-  /* Draw the chart and return its geometry (used for tooltips). */
-  function draw(canvas, data, opts, responsive) {
-    const { ctx, w, h } = setup(canvas, responsive);
-    const color = opts.color || "#38BDF8";
-    const lineWidth = opts.lineWidth != null ? opts.lineWidth : 2;
-    const fillAlpha = opts.fillAlpha != null ? opts.fillAlpha : 0.25;
-    const axis = !!opts.axis;
-
-    const padT = 8;
-    const padR = 6;
-    const padB = axis ? 6 : 4;
-    const padL = axis ? 48 : 2;
-    const plotW = Math.max(1, w - padL - padR);
-    const plotH = Math.max(1, h - padT - padB);
-
-    const min = Math.min(...data);
-    const max = Math.max(...data);
-    const range = max - min;
-    const xAt = (i) => padL + (data.length === 1 ? plotW / 2 : (i / (data.length - 1)) * plotW);
-    const yAt = (v) => (range === 0 ? padT + plotH / 2 : padT + (1 - (v - min) / range) * plotH);
-
-    /* y-axis grid + labels */
-    if (axis) {
-      const fmt = opts.formatY || String;
-      const lines = 4;
-      ctx.font = "11px Inter, sans-serif";
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "right";
-      for (let i = 0; i <= lines; i++) {
-        const gy = padT + (i / lines) * plotH;
-        const val = max - (i / lines) * range;
-        ctx.strokeStyle = "rgba(34, 49, 79, 0.7)"; // --border
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(padL, gy);
-        ctx.lineTo(w - padR, gy);
-        ctx.stroke();
-        ctx.fillStyle = "#64748B"; // muted
-        ctx.fillText(fmt(val), padL - 8, gy);
+      var next = null;
+      if (event.type === "mousemove") {
+        var active = chart.getActiveElements();
+        next = active.length ? active[0].index : null;
       }
-    }
 
-    /* Build a smooth path through the points (midpoint quadratic curves). */
-    const pts = data.map((v, i) => ({ x: xAt(i), y: yAt(v), v }));
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 0; i < pts.length - 1; i++) {
-      const xc = (pts[i].x + pts[i + 1].x) / 2;
-      const yc = (pts[i].y + pts[i + 1].y) / 2;
-      ctx.quadraticCurveTo(pts[i].x, pts[i].y, xc, yc);
-    }
-    if (pts.length > 1) {
-      const last = pts[pts.length - 1];
-      ctx.lineTo(last.x, last.y);
-    }
+      if (chart.$finoraHoverIndex !== next) {
+        chart.$finoraHoverIndex = next;
+        chart.draw();
+      }
+    },
+    afterDatasetsDraw: function (chart, _args, options) {
+      var ohlc = options.ohlc || chart.$finoraOhlc;
+      if (!ohlc || !ohlc.length) return;
 
-    /* Gradient fill under the line */
-    const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
-    grad.addColorStop(0, rgba(color, fillAlpha));
-    grad.addColorStop(1, rgba(color, 0));
-    ctx.save();
-    ctx.lineTo(pts[pts.length - 1].x, padT + plotH);
-    ctx.lineTo(pts[0].x, padT + plotH);
-    ctx.closePath();
-    ctx.fillStyle = grad;
-    ctx.fill();
-    ctx.restore();
+      var bull = options.bull || (chart.$finoraColors && chart.$finoraColors.bull) || "#22C55E";
+      var bear = options.bear || (chart.$finoraColors && chart.$finoraColors.bear) || "#EF4444";
+      var ctx = chart.ctx;
+      var xScale = chart.scales.x;
+      var yScale = chart.scales.y;
+      var area = chart.chartArea;
+      if (!xScale || !yScale || !area) return;
 
-    /* Stroke the line on top */
-    ctx.beginPath();
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 0; i < pts.length - 1; i++) {
-      const xc = (pts[i].x + pts[i + 1].x) / 2;
-      const yc = (pts[i].y + pts[i + 1].y) / 2;
-      ctx.quadraticCurveTo(pts[i].x, pts[i].y, xc, yc);
-    }
-    if (pts.length > 1) ctx.lineTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = lineWidth;
-    ctx.lineJoin = "round";
-    ctx.stroke();
+      var step = 12;
+      if (ohlc.length > 1) {
+        var x0 = xScale.getPixelForValue(ohlc[0].x);
+        var x1 = xScale.getPixelForValue(ohlc[1].x);
+        step = Math.abs(x1 - x0) || step;
+      } else {
+        step = area.width / Math.max(ohlc.length, 1);
+      }
+      var bodyW = Math.max(5, step * 0.65);
 
-    return { ctx, w, h, padT, padB, points: pts, color };
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(area.left, area.top, area.right - area.left, area.bottom - area.top);
+      ctx.clip();
+
+      ohlc.forEach(function (bar) {
+        var x = xScale.getPixelForValue(bar.x);
+        if (!Number.isFinite(x) || x < area.left - bodyW || x > area.right + bodyW) return;
+
+        var yOpen = yScale.getPixelForValue(bar.open);
+        var yClose = yScale.getPixelForValue(bar.close);
+        var yHigh = yScale.getPixelForValue(bar.high);
+        var yLow = yScale.getPixelForValue(bar.low);
+        if (!Number.isFinite(yHigh) || !Number.isFinite(yLow)) return;
+
+        var up = bar.close >= bar.open;
+        var color = up ? bull : bear;
+
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 1.5;
+
+        ctx.beginPath();
+        ctx.moveTo(x, yHigh);
+        ctx.lineTo(x, yLow);
+        ctx.stroke();
+
+        var top = Math.min(yOpen, yClose);
+        var height = Math.max(2, Math.abs(yClose - yOpen));
+        ctx.fillRect(x - bodyW / 2, top, bodyW, height);
+      });
+
+      if (chart.$finoraHoverIndex != null && ohlc[chart.$finoraHoverIndex]) {
+        var hoverBar = ohlc[chart.$finoraHoverIndex];
+        var hoverX = xScale.getPixelForValue(hoverBar.x);
+        if (Number.isFinite(hoverX)) {
+          ctx.strokeStyle = "rgba(148, 163, 184, 0.55)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(hoverX, area.top);
+          ctx.lineTo(hoverX, area.bottom);
+          ctx.stroke();
+        }
+      }
+
+      ctx.restore();
+    },
+  };
+
+  if (typeof Chart !== "undefined") {
+    Chart.register(candlestickPlugin);
   }
 
-  function line(canvas, data, opts = {}) {
-    if (!canvas || !data || !data.length) return;
-    const responsive = opts.responsive !== false;
-
-    // Clean up any previous instance bound to this canvas.
-    if (canvas._finoraCleanup) canvas._finoraCleanup();
-    registry = registry.filter((r) => r.canvas !== canvas);
-
-    let geom = draw(canvas, data, opts, responsive);
-    const render = () => { geom = draw(canvas, data, opts, responsive); };
-
-    if (responsive) {
-      registry.push({ canvas, render });
-      bindResize();
+  function destroy(canvas) {
+    if (!canvas) return;
+    const chart = instances.get(canvas);
+    if (chart) {
+      chart.destroy();
+      instances.delete(canvas);
     }
-
-    /* Optional hover tooltip + crosshair (used by the portfolio chart). */
-    if (opts.tooltip) {
-      const parent = canvas.parentElement;
-      if (parent && getComputedStyle(parent).position === "static") parent.style.position = "relative";
-      if (parent) parent.style.overflow = "hidden";
-      const tip = document.createElement("div");
-      tip.className = "finora-chart-tip";
-      parent.appendChild(tip);
-
-      const onMove = (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        let nearest = geom.points[0];
-        let idx = 0;
-        geom.points.forEach((p, i) => {
-          if (Math.abs(p.x - mx) < Math.abs(nearest.x - mx)) { nearest = p; idx = i; }
-        });
-        render(); // redraw clean base
-        const ctx = canvas.getContext("2d");
-        ctx.save();
-        ctx.strokeStyle = "rgba(148,163,184,0.4)";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(nearest.x, geom.padT);
-        ctx.lineTo(nearest.x, geom.h - geom.padB);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.fillStyle = geom.color;
-        ctx.arc(nearest.x, nearest.y, 4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = "#0B1220";
-        ctx.stroke();
-        ctx.restore();
-
-        tip.innerHTML = opts.tooltip(nearest.v, idx);
-        tip.style.display = "block";
-        tip.style.left = (canvas.offsetLeft + nearest.x) + "px";
-        tip.style.top = (canvas.offsetTop + nearest.y) + "px";
-      };
-      const onLeave = () => { tip.style.display = "none"; render(); };
-
-      canvas.addEventListener("mousemove", onMove);
-      canvas.addEventListener("mouseleave", onLeave);
-      canvas._finoraCleanup = () => {
-        canvas.removeEventListener("mousemove", onMove);
-        canvas.removeEventListener("mouseleave", onLeave);
-        tip.remove();
-        registry = registry.filter((r) => r.canvas !== canvas);
-      };
+    if (canvas._finoraCleanup) {
+      canvas._finoraCleanup();
+      canvas._finoraCleanup = null;
     }
   }
 
-  function sparkline(canvas, data, color, opts = {}) {
-    line(canvas, data, {
-      color,
+  function rgba(hex, alpha) {
+    var h = (hex || "").trim().replace("#", "");
+    if (h.length === 3) h = h.split("").map(function (c) { return c + c; }).join("");
+    var n = parseInt(h, 16);
+    if (Number.isNaN(n)) return hex;
+    var r = (n >> 16) & 255;
+    var g = (n >> 8) & 255;
+    var b = n & 255;
+    return "rgba(" + r + ", " + g + ", " + b + ", " + alpha + ")";
+  }
+
+  function gridColor() {
+    return "rgba(34, 49, 79, 0.7)";
+  }
+
+  function tickColor() {
+    return "#64748B";
+  }
+
+  function buildScales(showAxis, formatY) {
+    if (!showAxis) {
+      return {
+        x: { display: false },
+        y: { display: false },
+      };
+    }
+    return {
+      x: {
+        grid: { color: gridColor() },
+        ticks: { color: tickColor(), maxTicksLimit: 6, maxRotation: 0 },
+      },
+      y: {
+        grid: { color: gridColor() },
+        ticks: {
+          color: tickColor(),
+          callback: function (value) {
+            return formatY ? formatY(value) : String(value);
+          },
+        },
+      },
+    };
+  }
+
+  function baseOptions(showAxis, formatY, tooltipFn) {
+    var options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 350 },
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#1e293b",
+          titleColor: "#f8fafc",
+          bodyColor: "#94a3b8",
+          borderColor: gridColor(),
+          borderWidth: 1,
+          padding: 10,
+        },
+      },
+      scales: buildScales(showAxis, formatY),
+    };
+
+    if (typeof tooltipFn === "function") {
+      options.plugins.tooltip.callbacks = {
+        label: function (ctx) {
+          return tooltipFn(ctx.parsed.y != null ? ctx.parsed.y : ctx.raw, ctx.dataIndex);
+        },
+      };
+    }
+
+    return options;
+  }
+
+  function store(canvas, chart) {
+    destroy(canvas);
+    instances.set(canvas, chart);
+    return chart;
+  }
+
+  function line(canvas, data, opts) {
+    if (!canvas || !data || !data.length || typeof Chart === "undefined") return;
+    opts = opts || {};
+    var color = opts.color || "#38BDF8";
+    var showAxis = !!opts.axis;
+    var labels = data.map(function (_, i) { return i + 1; });
+    var ctx = canvas.getContext("2d");
+
+    var chart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          borderColor: color,
+          backgroundColor: function (context) {
+            var chartArea = context.chart.chartArea;
+            if (!chartArea) return rgba(color, opts.fillAlpha != null ? opts.fillAlpha : 0.25);
+            var g = context.chart.ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+            g.addColorStop(0, rgba(color, opts.fillAlpha != null ? opts.fillAlpha : 0.25));
+            g.addColorStop(1, rgba(color, 0));
+            return g;
+          },
+          fill: true,
+          tension: 0.35,
+          borderWidth: opts.lineWidth != null ? opts.lineWidth : 2,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: color,
+          pointHoverBorderColor: "#0B1220",
+          pointHoverBorderWidth: 2,
+        }],
+      },
+      options: baseOptions(showAxis, opts.formatY, opts.tooltip),
+    });
+
+    return store(canvas, chart);
+  }
+
+  function sparkline(canvas, data, color, opts) {
+    opts = opts || {};
+    return line(canvas, data, {
+      color: color,
       axis: false,
       lineWidth: opts.lineWidth || 1.8,
       fillAlpha: opts.fillAlpha != null ? opts.fillAlpha : 0.28,
@@ -235,47 +266,195 @@ const FinoraChart = (() => {
     });
   }
 
-  /* --------------------------- Doughnut ---------------------------- */
-  // segments: [{ label, value, color }]; opts.centerLabel / opts.centerSub
-  function donut(canvas, segments, opts = {}) {
-    if (!canvas || !segments || !segments.length) return;
-    const render = () => {
-      const { ctx, w, h } = setup(canvas, true);
-      const total = segments.reduce((sum, s) => sum + s.value, 0) || 1;
-      const cx = w / 2;
-      const cy = h / 2;
-      const radius = Math.min(w, h) / 2 - 6;
-      const thickness = opts.thickness || radius * 0.42;
-      let start = -Math.PI / 2;
-      segments.forEach((seg) => {
-        const angle = (seg.value / total) * Math.PI * 2;
-        ctx.beginPath();
-        ctx.arc(cx, cy, radius, start, start + angle);
-        ctx.arc(cx, cy, radius - thickness, start + angle, start, true);
-        ctx.closePath();
-        ctx.fillStyle = seg.color;
-        ctx.fill();
-        start += angle;
-      });
-      if (opts.centerLabel) {
-        ctx.fillStyle = opts.centerColor || "#F8FAFC";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.font = "700 18px Inter, sans-serif";
-        ctx.fillText(opts.centerLabel, cx, cy - (opts.centerSub ? 8 : 0));
-        if (opts.centerSub) {
-          ctx.fillStyle = "#94A3B8";
-          ctx.font = "500 11px Inter, sans-serif";
-          ctx.fillText(opts.centerSub, cx, cy + 12);
-        }
-      }
-    };
-    if (canvas._finoraCleanup) canvas._finoraCleanup();
-    registry = registry.filter((r) => r.canvas !== canvas);
-    render();
-    registry.push({ canvas, render });
-    bindResize();
+  function priceBounds(ohlc) {
+    var min = Infinity;
+    var max = -Infinity;
+    ohlc.forEach(function (bar) {
+      if (bar.low < min) min = bar.low;
+      if (bar.high > max) max = bar.high;
+    });
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+    var pad = (max - min) * 0.06 || max * 0.01 || 1;
+    return { min: min - pad, max: max + pad };
   }
 
-  return { line, sparkline, donut };
+  function stockChart(canvas, payload, opts) {
+    if (!canvas || typeof Chart === "undefined") return;
+    opts = opts || {};
+    payload = payload || {};
+
+    var mode = payload.mode === "candle" ? "candle" : "line";
+    var ohlc = normalizeOhlc(payload.ohlc || []);
+    var closes = payload.closes || ohlc.map(function (b) { return b.close; });
+    var bull = opts.bull || "#22C55E";
+    var bear = opts.bear || "#EF4444";
+    var ctx = canvas.getContext("2d");
+    var bounds = priceBounds(ohlc);
+
+    if (mode === "candle" && ohlc.length) {
+      var candleOptions = baseOptions(true, opts.formatY);
+      candleOptions.parsing = false;
+      candleOptions.scales.x.type = "time";
+      candleOptions.scales.x.time = {
+        unit: "day",
+        displayFormats: { day: "MMM d" },
+      };
+      if (bounds) {
+        candleOptions.scales.y.min = bounds.min;
+        candleOptions.scales.y.max = bounds.max;
+      }
+      candleOptions.plugins.finoraCandlestick = {
+        ohlc: ohlc,
+        bull: bull,
+        bear: bear,
+      };
+      candleOptions.plugins.tooltip.callbacks = {
+        title: function (items) {
+          if (!items.length) return "";
+          var bar = ohlc[items[0].dataIndex];
+          return bar ? bar.date : "";
+        },
+        label: function (ctx) {
+          var bar = ohlc[ctx.dataIndex];
+          if (!bar) return "";
+          var fmt = opts.formatTooltip || String;
+          return [
+            "Open: " + fmt(bar.open),
+            "High: " + fmt(bar.high),
+            "Low: " + fmt(bar.low),
+            "Close: " + fmt(bar.close),
+          ];
+        },
+      };
+
+      var chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          datasets: [{
+            label: "Price",
+            data: ohlc.map(function (bar) {
+              return { x: bar.x, y: bar.close };
+            }),
+            borderColor: "rgba(0,0,0,0)",
+            backgroundColor: "rgba(0,0,0,0)",
+            pointRadius: 0,
+            pointHoverRadius: 5,
+            pointHitRadius: 12,
+            borderWidth: 0,
+          }],
+        },
+        options: candleOptions,
+      });
+
+      chart.$finoraOhlc = ohlc;
+      chart.$finoraColors = { bull: bull, bear: bear };
+      chart.$finoraHoverIndex = null;
+      chart.update("none");
+
+      return store(canvas, chart);
+    }
+
+    var up = closes.length > 1 ? closes[closes.length - 1] >= closes[0] : true;
+    var lineColor = up ? bull : bear;
+    var lineOptions = baseOptions(true, opts.formatY, opts.formatTooltip);
+    lineOptions.parsing = false;
+    if (ohlc.length) {
+      lineOptions.scales.x.type = "time";
+      lineOptions.scales.x.time = {
+        unit: "day",
+        displayFormats: { day: "MMM d" },
+      };
+      if (bounds) {
+        lineOptions.scales.y.min = bounds.min;
+        lineOptions.scales.y.max = bounds.max;
+      }
+    }
+
+    var lineChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        datasets: [{
+          data: ohlc.length
+            ? ohlc.map(function (b) { return { x: b.x, y: b.close }; })
+            : closes.map(function (v, i) { return { x: i + 1, y: v }; }),
+          borderColor: lineColor,
+          backgroundColor: rgba(lineColor, 0.2),
+          fill: true,
+          tension: 0.35,
+          borderWidth: 2.5,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: lineColor,
+          pointHoverBorderColor: "#0B1220",
+          pointHoverBorderWidth: 2,
+        }],
+      },
+      options: lineOptions,
+    });
+
+    return store(canvas, lineChart);
+  }
+
+  function donut(canvas, segments, opts) {
+    if (!canvas || !segments || !segments.length || typeof Chart === "undefined") return;
+    opts = opts || {};
+    var total = segments.reduce(function (sum, s) { return sum + s.value; }, 0) || 1;
+
+    var chart = new Chart(canvas.getContext("2d"), {
+      type: "doughnut",
+      data: {
+        labels: segments.map(function (s) { return s.label; }),
+        datasets: [{
+          data: segments.map(function (s) { return s.value; }),
+          backgroundColor: segments.map(function (s) { return s.color; }),
+          borderWidth: 0,
+          hoverOffset: 4,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: opts.thickness ? String(Math.round(opts.thickness * 100)) + "%" : "62%",
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: "#1e293b",
+            callbacks: {
+              label: function (ctx) {
+                var pct = ((ctx.parsed / total) * 100).toFixed(1);
+                return ctx.label + ": " + pct + "%";
+              },
+            },
+          },
+        },
+      },
+      plugins: opts.centerLabel ? [{
+        id: "finoraDonutCenter",
+        beforeDraw: function (chart) {
+          var meta = chart.getDatasetMeta(0);
+          if (!meta || !meta.data.length) return;
+          var arc = meta.data[0];
+          var cx = arc.x;
+          var cy = arc.y;
+          var cctx = chart.ctx;
+          cctx.save();
+          cctx.textAlign = "center";
+          cctx.textBaseline = "middle";
+          cctx.fillStyle = opts.centerColor || "#F8FAFC";
+          cctx.font = "700 18px Inter, sans-serif";
+          cctx.fillText(opts.centerLabel, cx, cy - (opts.centerSub ? 8 : 0));
+          if (opts.centerSub) {
+            cctx.fillStyle = "#94A3B8";
+            cctx.font = "500 11px Inter, sans-serif";
+            cctx.fillText(opts.centerSub, cx, cy + 12);
+          }
+          cctx.restore();
+        },
+      }] : [],
+    });
+
+    return store(canvas, chart);
+  }
+
+  return { line, sparkline, stockChart, donut, destroy };
 })();

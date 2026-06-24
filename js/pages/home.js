@@ -21,6 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       const stocks = await FinoraAPI.getTrending();
       if (!stocks.length) { tape.classList.add("d-none"); return; }
+      if (stocks.every((s) => s.price == null)) { tape.classList.add("d-none"); return; }
       const item = (s) => {
         const up = s.change >= 0;
         return `<span class="ticker-item">
@@ -43,7 +44,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!row) return;
     try {
       const indices = await FinoraAPI.getIndices();
-      if (!indices.length) { row.innerHTML = `<div class="col-12">${Finora.emptyState()}</div>`; return; }
+      if (!indices.length) { row.innerHTML = `<div class="col-12">${Finora.apiUnavailableState()}</div>`; return; }
       row.innerHTML = indices
         .map((idx, i) => {
           const up = idx.change >= 0;
@@ -67,7 +68,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
     } catch {
-      row.innerHTML = `<div class="col-12">${Finora.emptyState()}</div>`;
+      row.innerHTML = `<div class="col-12">${Finora.apiUnavailableState()}</div>`;
     }
   }
 
@@ -77,7 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!body) return;
     try {
       const stocks = await FinoraAPI.getTrending();
-      if (!stocks.length) { body.innerHTML = Finora.emptyRow(6); return; }
+      if (!stocks.length) { body.innerHTML = Finora.emptyRow(6, Finora.API_UNAVAILABLE_MSG); return; }
       body.innerHTML = stocks
         .map((s, i) => {
           const up = s.change >= 0;
@@ -113,7 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
     } catch {
-      body.innerHTML = Finora.emptyRow(6);
+      body.innerHTML = Finora.emptyRow(6, Finora.API_UNAVAILABLE_MSG);
     }
   }
 
@@ -153,10 +154,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (history.length) {
         FinoraChart.line(document.getElementById("heroChart"), history, { color: C("--accent"), lineWidth: 2.5, fillAlpha: 0.35 });
       } else {
-        document.getElementById("heroChartWrap").innerHTML = Finora.emptyState("Live chart unavailable", "bi-graph-up");
+        document.getElementById("heroChartWrap").innerHTML = Finora.apiUnavailableState("bi-graph-up");
       }
     } catch {
-      document.getElementById("heroChartWrap").innerHTML = Finora.emptyState("Connect a market data API for live quotes", "bi-graph-up");
+      document.getElementById("heroChartWrap").innerHTML = Finora.apiUnavailableState("bi-graph-up");
     }
   }
 });

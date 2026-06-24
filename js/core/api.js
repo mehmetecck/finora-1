@@ -17,10 +17,11 @@ const FinoraAPI = (() => {
   const FINNHUB_BASE = "https://finnhub.io/api/v1";
   const TWELVE_DATA_API_KEY = "76d6376ad8b54c4681c49311a31590a6";
   const TWELVE_BASE = "https://api.twelvedata.com";
-  const REQUEST_TIMEOUT = 6500;
+  const REQUEST_TIMEOUT = 12000;
   const QUOTE_CACHE_TTL = 60 * 1000;
   const HISTORY_CACHE_TTL = 5 * 60 * 1000;
   const NEWS_CACHE_TTL = 15 * 60 * 1000;
+  const API_UNAVAILABLE_MSG = "API is currently unavailable, please try again later or reload the page.";
 
   const DEFAULT_SYMBOLS = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AMD", "JPM", "V"];
   const INDEX_SYMBOLS = [
@@ -131,11 +132,14 @@ const FinoraAPI = (() => {
     const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
     const timeout = controller ? setTimeout(() => controller.abort(), REQUEST_TIMEOUT) : null;
     try {
-      const res = await fetch(url, { signal: controller?.signal });
-      if (!res.ok) throw new Error(`Market API error ${res.status}`);
+      const res = await fetch(url, { signal: controller ? controller.signal : undefined });
+      if (!res.ok) throw new Error(API_UNAVAILABLE_MSG);
       const data = await res.json();
-      if (data.status === "error" || data.code) throw new Error(data.message || "Market API error");
+      if (data.status === "error" || data.code) throw new Error(API_UNAVAILABLE_MSG);
       return data;
+    } catch (err) {
+      if (err && err.message === API_UNAVAILABLE_MSG) throw err;
+      throw new Error(API_UNAVAILABLE_MSG);
     } finally {
       if (timeout) clearTimeout(timeout);
     }
@@ -195,7 +199,7 @@ const FinoraAPI = (() => {
   function mapQuote(symbol, meta, data) {
     const price = round(Number(data.c));
     const prevClose = round(Number(data.pc));
-    if (!price) throw new Error(`No quote data for ${symbol}`);
+    if (!price) throw new Error(API_UNAVAILABLE_MSG);
     const percentChange = Number.isFinite(Number(data.dp)) ? round(Number(data.dp)) : changePct(price, prevClose);
 
     return {
@@ -225,7 +229,7 @@ const FinoraAPI = (() => {
 
   function mapSeries(symbol, meta, data) {
     const values = [...(data.values || [])].reverse();
-    if (!values.length) throw new Error(`No market data for ${symbol}`);
+    if (!values.length) throw new Error(API_UNAVAILABLE_MSG);
     const latest = values[values.length - 1];
     const prev = values[values.length - 2] || latest;
     const price = round(Number(latest.close));
@@ -276,6 +280,21 @@ const FinoraAPI = (() => {
     return mapSeries(normalized, metaFor(normalized), data).history.slice(-points);
   }
 
+  async function getOHLC(symbol, range = "1M") {
+    const normalized = symbol.trim().toUpperCase();
+    const points = rangePoints(range);
+    const data = await timeSeries(normalized, Math.max(points, 60));
+    const values = [...(data.values || [])].reverse();
+    if (!values.length) throw new Error(API_UNAVAILABLE_MSG);
+    return values.slice(-points).map((row) => ({
+      date: (row.datetime || "").slice(0, 10),
+      open: round(Number(row.open)),
+      high: round(Number(row.high)),
+      low: round(Number(row.low)),
+      close: round(Number(row.close)),
+    })).filter((bar) => bar.close != null);
+  }
+
   async function mapWithLimit(items, limit, mapper) {
     const out = [];
     for (let i = 0; i < items.length; i += limit) {
@@ -286,15 +305,25 @@ const FinoraAPI = (() => {
   }
 
   async function getTrending() {
-    if (!hasFinnhubKey()) return DEFAULT_SYMBOLS.map((symbol) => ({ ...metaFor(symbol), price: null, change: null, history: [] }));
-    const items = await mapWithLimit(DEFAULT_SYMBOLS, 4, async (symbol) => {
+    if (!hasFinnhubKey()) {
+      return DEFAULT_SYMBOLS.map(function (symbol) {
+        return { ...metaFor(symbol), price: null, change: null, history: [] };
+      });
+    }
+    var items = await mapWithLimit(DEFAULT_SYMBOLS, 4, async function (symbol) {
       try {
         return await getStock(symbol);
-      } catch {
+      } catch (err) {
         return { ...metaFor(symbol), price: null, change: null, history: [] };
       }
     });
-    return items.length ? items : DEFAULT_SYMBOLS.map((symbol) => ({ ...metaFor(symbol), price: null, change: null, history: [] }));
+    if (items.length && items.every(function (item) { return item.price == null; })) {
+      throw new Error(API_UNAVAILABLE_MSG);
+    }
+    if (items.length) return items;
+    return DEFAULT_SYMBOLS.map(function (symbol) {
+      return { ...metaFor(symbol), price: null, change: null, history: [] };
+    });
   }
 
   async function getIndices() {
@@ -311,6 +340,11 @@ const FinoraAPI = (() => {
       } catch {
         return { name: idx.name, value: null, change: null, history: [] };
       }
+    }).then((results) => {
+      if (results.length && results.every((item) => item.value == null)) {
+        throw new Error(API_UNAVAILABLE_MSG);
+      }
+      return results;
     });
   }
 
@@ -380,6 +414,7 @@ const FinoraAPI = (() => {
   }
 
   return {
+    API_UNAVAILABLE_MSG,
     isConfigured,
     hasFinnhubKey,
     hasTwelveKey,
@@ -388,6 +423,7 @@ const FinoraAPI = (() => {
     getTrending,
     getStock,
     getHistory,
+    getOHLC,
     getNews,
     getPortfolio,
     getPortfolioHistory,
