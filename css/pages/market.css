@@ -109,3 +109,133 @@
   line-height: 1;
 }
 
+/* Browse hub */
+.market-search-wrap {
+  position: relative;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.market-search .form-control {
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+}
+
+.market-search-results {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  max-height: 320px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-soft);
+}
+
+.market-search-result {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.market-search-result:hover,
+.market-search-result:focus-visible {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.trending-row {
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.trending-row:hover {
+  background: var(--bg-elevated);
+}
+
+.market-movers-card {
+  overflow: hidden;
+}
+
+.market-movers-head {
+  padding: 1.25rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.market-movers-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.market-mover-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1.25rem;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.market-mover-item:last-child {
+  border-bottom: none;
+}
+
+.market-mover-item:hover {
+  background: var(--bg-elevated);
+}
+
+.market-mover-ticker {
+  display: inline-block;
+  margin-top: 0.15rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 6px;
+  background: var(--bg-main);
+  border: 1px solid var(--border);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.market-mover-price {
+  flex: 0 0 auto;
+  min-width: 72px;
+}
+
+.market-mover-change {
+  flex: 0 0 auto;
+  min-width: 78px;
+  padding: 0.35rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.market-mover-change.bull {
+  background: rgba(34, 197, 94, 0.18);
+  color: var(--bull);
+}
+
+.market-mover-change.bear {
+  background: rgba(239, 68, 68, 0.18);
+  color: var(--bear);
+}
+

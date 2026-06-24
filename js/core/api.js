@@ -21,6 +21,8 @@ const FinoraAPI = (() => {
   const QUOTE_CACHE_TTL = 60 * 1000;
   const HISTORY_CACHE_TTL = 5 * 60 * 1000;
   const NEWS_CACHE_TTL = 15 * 60 * 1000;
+  const MOVERS_CACHE_TTL = 60 * 60 * 1000;
+  const MOVERS_STORAGE_KEY = "finora_market_movers";
   const API_UNAVAILABLE_MSG = "API is currently unavailable, please try again later or reload the page.";
 
   const DEFAULT_SYMBOLS = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AMD", "JPM", "V"];
@@ -326,6 +328,100 @@ const FinoraAPI = (() => {
     });
   }
 
+  function mapMover(row) {
+    const symbol = (row.symbol || "").trim().toUpperCase();
+    const meta = metaFor(symbol);
+    return {
+      symbol,
+      name: row.name || meta.name || symbol,
+      price: round(Number(row.last)),
+      change: round(Number(row.percent_change)),
+      exchange: row.exchange || meta.exchange,
+      sector: meta.sector || "",
+    };
+  }
+
+  function readStoredMovers(direction, limit) {
+    try {
+      const raw = localStorage.getItem(MOVERS_STORAGE_KEY);
+      if (!raw) return null;
+      const all = JSON.parse(raw);
+      const entry = all[direction + ":" + limit];
+      if (!entry || !Array.isArray(entry.data) || Date.now() - entry.time > MOVERS_CACHE_TTL) return null;
+      return entry.data;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeStoredMovers(direction, limit, data) {
+    try {
+      const raw = localStorage.getItem(MOVERS_STORAGE_KEY);
+      const all = raw ? JSON.parse(raw) : {};
+      all[direction + ":" + limit] = { time: Date.now(), data: data };
+      localStorage.setItem(MOVERS_STORAGE_KEY, JSON.stringify(all));
+    } catch {
+      /* ignore storage errors */
+    }
+  }
+
+  async function fetchMarketMovers(direction, limit) {
+    requireTwelveKey();
+    const url = new URL(TWELVE_BASE + "/market_movers/stocks");
+    url.searchParams.set("direction", direction);
+    url.searchParams.set("outputsize", String(limit));
+    url.searchParams.set("country", "US");
+    url.searchParams.set("apikey", TWELVE_DATA_API_KEY);
+    const data = await fetchJson(url.toString());
+    return (data.values || [])
+      .slice(0, limit)
+      .map(mapMover)
+      .filter((item) => item.symbol && item.price != null && Number.isFinite(item.change));
+  }
+
+  async function moversFromCatalog(direction, limit) {
+    if (!hasFinnhubKey()) return [];
+    const symbols = COMPANY_CATALOG.map((c) => c.symbol);
+    const quoted = await mapWithLimit(symbols, 4, async (symbol) => {
+      try {
+        return await getStock(symbol);
+      } catch {
+        return null;
+      }
+    });
+    const valid = quoted.filter((item) => item && item.price != null && Number.isFinite(item.change));
+    const sorted = valid.sort((a, b) => (direction === "gainers" ? b.change - a.change : a.change - b.change));
+    if (direction === "gainers") return sorted.filter((item) => item.change > 0).slice(0, limit);
+    return sorted.filter((item) => item.change < 0).slice(0, limit);
+  }
+
+  async function getMarketMovers(direction, limit = 6) {
+    const cached = readStoredMovers(direction, limit);
+    if (cached && cached.length) return cached;
+
+    let movers = [];
+    if (hasTwelveKey()) {
+      try {
+        movers = await fetchMarketMovers(direction, limit);
+      } catch {
+        /* fall back to catalog quotes */
+      }
+    }
+    if (!movers.length) movers = await moversFromCatalog(direction, limit);
+    if (!movers.length) throw new Error(API_UNAVAILABLE_MSG);
+
+    writeStoredMovers(direction, limit, movers);
+    return movers;
+  }
+
+  async function getGainers(limit = 6) {
+    return getMarketMovers("gainers", limit);
+  }
+
+  async function getLosers(limit = 6) {
+    return getMarketMovers("losers", limit);
+  }
+
   async function getIndices() {
     if (!hasFinnhubKey()) return INDEX_SYMBOLS.map((idx) => ({ name: idx.name, value: null, change: null, history: [] }));
     return mapWithLimit(INDEX_SYMBOLS, 2, async (idx) => {
@@ -421,6 +517,8 @@ const FinoraAPI = (() => {
     searchCompanies,
     getIndices,
     getTrending,
+    getGainers,
+    getLosers,
     getStock,
     getHistory,
     getOHLC,

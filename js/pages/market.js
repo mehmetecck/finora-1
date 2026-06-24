@@ -1,140 +1,272 @@
 /* =====================================================================
    Finora - Market page logic
-   Company list + detailed stock view, powered by FinoraAPI.
+   Browse hub (search, indices, trending) + stock detail view.
    ===================================================================== */
 
 document.addEventListener("DOMContentLoaded", function() {
   var css = getComputedStyle(document.documentElement);
   function C(n) { return css.getPropertyValue(n).trim(); }
 
-  var listEl = document.getElementById("stockList");
+  var browseEl = document.getElementById("marketBrowse");
+  var detailViewEl = document.getElementById("marketDetail");
   var detailEl = document.getElementById("stockDetail");
-  var searchEl = document.getElementById("stockSearch");
+  var browseSearchEl = document.getElementById("browseSearch");
+  var browseResultsEl = document.getElementById("browseSearchResults");
 
   var params = new URLSearchParams(location.search);
   var activeSymbol = params.get("symbol") || null;
-  var companies = [];
   var searchTimer = null;
   var searchRun = 0;
   var detailRun = 0;
   var chartType = "line";
   var chartRange = "1M";
 
-  init();
-
-  async function init() {
-    listEl.innerHTML = `<div class="text-muted-2 small p-2">Loading market movers...</div>`;
-    detailEl.innerHTML = Finora.emptyState("Loading market data...", "bi-hourglass-split");
-    searchEl.addEventListener("input", handleSearchInput);
-
-    var initialSymbol = activeSymbol;
-    if (initialSymbol) loadDetail(initialSymbol);
-
-    try {
-      companies = await FinoraAPI.getTrending();
-    } catch (err) {
-      companies = [];
-    }
-
-    if (!companies.length) {
-      if (searchEl.value.trim()) {
-        handleSearchInput();
-      } else {
-        listEl.innerHTML = `<div class="text-muted-2 small p-2">${FinoraAPI.isConfigured() ? Finora.API_UNAVAILABLE_MSG : "Search for a company to load market data."}</div>`;
-      }
-      if (!activeSymbol) {
-        detailEl.innerHTML = FinoraAPI.isConfigured()
-          ? Finora.apiUnavailableState()
-          : marketConfigState();
-      }
-    } else {
-      if (!activeSymbol) activeSymbol = companies[0].symbol;
-      if (searchEl.value.trim()) {
-        handleSearchInput();
-      } else {
-        renderList(companies);
-      }
-      if (!initialSymbol && activeSymbol) loadDetail(activeSymbol);
-    }
+  if (activeSymbol) {
+    showDetailView();
+    initDetail(activeSymbol);
+  } else {
+    showBrowseView();
+    initBrowse();
   }
 
-  function handleSearchInput() {
-    var q = searchEl.value.trim().toLowerCase();
+  function showBrowseView() {
+    browseEl.classList.remove("d-none");
+    detailViewEl.classList.add("d-none");
+  }
+
+  function showDetailView() {
+    browseEl.classList.add("d-none");
+    detailViewEl.classList.remove("d-none");
+  }
+
+  function openDetail(symbol) {
+    activeSymbol = symbol;
+    history.pushState(null, "", "market.html?symbol=" + symbol);
+    showDetailView();
+    initDetail(symbol);
+  }
+
+  /* ============================ Browse hub ========================= */
+  function initBrowse() {
+    browseSearchEl.addEventListener("input", handleBrowseSearch);
+    browseSearchEl.addEventListener("focus", handleBrowseSearch);
+    document.addEventListener("click", function(e) {
+      if (!e.target.closest(".market-search-wrap")) {
+        browseResultsEl.classList.add("d-none");
+      }
+    });
+    loadIndices();
+    loadTrending();
+    loadMovers();
+  }
+
+  function handleBrowseSearch() {
+    var q = browseSearchEl.value.trim().toLowerCase();
     clearTimeout(searchTimer);
 
     if (!q) {
-      renderList(companies);
+      browseResultsEl.classList.add("d-none");
+      browseResultsEl.innerHTML = "";
       return;
     }
 
-    var filtered = companies.filter(function(c) {
-      return c.symbol.toLowerCase().includes(q) || (c.name || "").toLowerCase().includes(q);
-    });
-    renderList(filtered);
+    if (q.length < 2) {
+      browseResultsEl.classList.remove("d-none");
+      browseResultsEl.innerHTML = `<div class="text-muted-2 small p-3">Type at least 2 characters…</div>`;
+      return;
+    }
 
-    if (q.length < 2) return;
     var run = ++searchRun;
+    browseResultsEl.classList.remove("d-none");
+    browseResultsEl.innerHTML = `<div class="text-muted-2 small p-3"><span class="spinner-border spinner-border-sm me-2"></span>Searching…</div>`;
+
     searchTimer = setTimeout(async function() {
-      renderSearchStatus(filtered);
+      var local = [];
       try {
-        var results = await FinoraAPI.searchCompanies(q, 8);
+        var trending = await FinoraAPI.getTrending();
+        local = trending.filter(function(c) {
+          return c.symbol.toLowerCase().includes(q) || (c.name || "").toLowerCase().includes(q);
+        });
+      } catch (err) {
+        local = [];
+      }
+
+      var results = local;
+      try {
+        var remote = await FinoraAPI.searchCompanies(q, 8);
         if (run !== searchRun) return;
-        renderList(mergeCompanies(filtered, results));
+        results = mergeCompanies(local, remote);
       } catch (err) {
         if (run !== searchRun) return;
-        renderList(filtered);
-        if (!filtered.length) {
-          listEl.innerHTML = `<div class="text-muted-2 small p-2">${Finora.API_UNAVAILABLE_MSG}</div>`;
-        }
+        results = local;
       }
+
+      if (!results.length) {
+        browseResultsEl.innerHTML = `<div class="text-muted-2 small p-3">No matches found.</div>`;
+        return;
+      }
+
+      browseResultsEl.innerHTML = results
+        .map(function(c) {
+          return `<button type="button" class="market-search-result" data-pick="${c.symbol}">
+              ${Finora.tickerAvatar(c.symbol, { size: "sm", color: c.color })}
+              <span class="min-w-0">
+                <span class="d-block fw-semibold text-white text-truncate">${c.symbol}</span>
+                <span class="d-block text-muted-2 small text-truncate">${c.name || ""}</span>
+              </span>
+            </button>`;
+        })
+        .join("");
+
+      browseResultsEl.querySelectorAll("[data-pick]").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          browseSearchEl.value = "";
+          browseResultsEl.classList.add("d-none");
+          openDetail(btn.getAttribute("data-pick"));
+        });
+      });
     }, 350);
   }
 
-  /* --------------------------- Sidebar ---------------------------- */
-  function renderList(items) {
-    if (!items.length) {
-      listEl.innerHTML = `<div class="text-muted-2 small p-2">No matches.</div>`;
-      return;
-    }
-
-    listEl.innerHTML = items
-      .map(function(c) {
-        var price = c.price != null ? Finora.fmtMoney(c.price) : "--";
-        var hasChange = Number.isFinite(c.change);
-        var up = (c.change || 0) >= 0;
-        var active = c.symbol === activeSymbol ? "active" : "";
-        return `<button class="stock-list-item ${active}" data-symbol="${c.symbol}">
-            ${Finora.tickerAvatar(c.symbol, { size: "sm", color: c.color })}
-            <span class="flex-grow-1 text-start min-w-0">
-              <span class="d-block fw-semibold text-white text-truncate">${c.symbol}</span>
-              <span class="d-block text-muted-2 small text-truncate">${c.name || ""}</span>
-            </span>
-            <span class="text-end">
-              <span class="d-block small fw-semibold text-white">${price}</span>
-              <span class="d-block small ${up ? "text-bull" : "text-bear"}">${hasChange ? `${up ? "+" : ""}${c.change.toFixed(2)}%` : "--"}</span>
-            </span>
-          </button>`;
-      })
-      .join("");
-
-    listEl.querySelectorAll("[data-symbol]").forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        activeSymbol = btn.dataset.symbol;
-        var selected = items.find(function(item) { return item.symbol === activeSymbol; });
-        if (selected && !companies.some(function(item) { return item.symbol === selected.symbol; })) companies.unshift(selected);
-        renderList(items);
-        loadDetail(activeSymbol);
-        history.replaceState(null, "", "market.html?symbol=" + activeSymbol);
+  async function loadIndices() {
+    var row = document.getElementById("indicesRow");
+    if (!row) return;
+    try {
+      var indices = await FinoraAPI.getIndices();
+      if (!indices.length) { row.innerHTML = `<div class="col-12">${Finora.apiUnavailableState()}</div>`; return; }
+      row.innerHTML = indices
+        .map(function(idx, i) {
+          var up = idx.change >= 0;
+          return `<div class="col-6 col-lg-3">
+              <div class="card-finora p-3 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <span class="text-muted-2 small fw-semibold">${idx.name}</span>
+                  <span class="badge ${up ? "badge-bull" : "badge-bear"}">
+                    <i class="bi bi-caret-${up ? "up" : "down"}-fill"></i> ${Math.abs(idx.change).toFixed(2)}%
+                  </span>
+                </div>
+                <div class="fs-4 fw-bold mb-2">${Finora.fmtNumber(idx.value)}</div>
+                ${idx.history ? `<canvas id="idxChart${i}" height="48"></canvas>` : ""}
+              </div>
+            </div>`;
+        })
+        .join("");
+      indices.forEach(function(idx, i) {
+        if (idx.history) {
+          FinoraChart.sparkline(document.getElementById("idxChart" + i), idx.history, idx.change >= 0 ? C("--bull") : C("--bear"));
+        }
       });
-    });
+    } catch (err) {
+      row.innerHTML = `<div class="col-12">${Finora.apiUnavailableState()}</div>`;
+    }
   }
 
-  function renderSearchStatus(items) {
-    renderList(items);
-    listEl.insertAdjacentHTML(
-      "afterbegin",
-      `<div class="text-muted-2 small p-2" data-search-status><span class="spinner-border spinner-border-sm me-2"></span>Searching companies...</div>`
-    );
+  async function loadTrending() {
+    var body = document.getElementById("trendingBody");
+    if (!body) return;
+    try {
+      var stocks = await FinoraAPI.getTrending();
+      if (!stocks.length) { body.innerHTML = Finora.emptyRow(6, Finora.API_UNAVAILABLE_MSG); return; }
+      body.innerHTML = stocks
+        .map(function(s, i) {
+          var up = s.change >= 0;
+          return `<tr class="trending-row" data-symbol="${s.symbol}">
+              <td>
+                <div class="d-flex align-items-center gap-3">
+                  ${Finora.tickerAvatar(s.symbol, { color: s.color })}
+                  <div>
+                    <div class="fw-bold text-white">${s.symbol}</div>
+                    <div class="text-muted-2 small">${s.name || ""}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="text-end fw-semibold text-white">${Finora.fmtMoney(s.price)}</td>
+              <td class="text-end">
+                <span class="badge ${up ? "badge-bull" : "badge-bear"}">
+                  <i class="bi bi-caret-${up ? "up" : "down"}-fill"></i> ${Math.abs(s.change).toFixed(2)}%
+                </span>
+              </td>
+              <td class="text-end d-none d-md-table-cell">${s.cap ? "$" + s.cap : "—"}</td>
+              <td class="text-end d-none d-lg-table-cell" style="width:130px">
+                ${s.history ? `<canvas id="rowChart${i}" height="36" width="120"></canvas>` : "—"}
+              </td>
+              <td class="text-end">
+                <button type="button" class="btn btn-sm btn-outline-brand" data-trade="${s.symbol}">Trade</button>
+              </td>
+            </tr>`;
+        })
+        .join("");
+
+      stocks.forEach(function(s, i) {
+        if (s.history) {
+          FinoraChart.sparkline(document.getElementById("rowChart" + i), s.history, s.change >= 0 ? C("--bull") : C("--bear"), { responsive: false });
+        }
+      });
+
+      body.querySelectorAll(".trending-row").forEach(function(row) {
+        row.addEventListener("click", function(e) {
+          if (e.target.closest("[data-trade]")) return;
+          openDetail(row.getAttribute("data-symbol"));
+        });
+      });
+
+      body.querySelectorAll("[data-trade]").forEach(function(btn) {
+        btn.addEventListener("click", function(e) {
+          e.stopPropagation();
+          openDetail(btn.getAttribute("data-trade"));
+        });
+      });
+    } catch (err) {
+      body.innerHTML = Finora.emptyRow(6, Finora.API_UNAVAILABLE_MSG);
+    }
+  }
+
+  async function loadMovers() {
+    loadMoverColumn("gainersList", true, FinoraAPI.getGainers);
+    loadMoverColumn("losersList", false, FinoraAPI.getLosers);
+  }
+
+  function renderMoverItem(stock, isGainer) {
+    var sign = isGainer ? "+" : "";
+    return `<button type="button" class="market-mover-item" data-symbol="${stock.symbol}">
+        ${Finora.tickerAvatar(stock.symbol, { size: "sm" })}
+        <span class="flex-grow-1 min-w-0 text-start">
+          <span class="d-block text-white text-truncate fw-medium">${stock.name}</span>
+          <span class="market-mover-ticker">${stock.symbol}</span>
+        </span>
+        <span class="market-mover-price text-end">
+          <span class="d-block fw-semibold text-white">${Finora.fmtMoney(stock.price)}</span>
+          <span class="d-block text-muted-2 small">USD</span>
+        </span>
+        <span class="market-mover-change ${isGainer ? "bull" : "bear"}">${sign}${stock.change.toFixed(2)}%</span>
+      </button>`;
+  }
+
+  async function loadMoverColumn(elementId, isGainer, fetchFn) {
+    var wrap = document.getElementById(elementId);
+    if (!wrap) return;
+    wrap.innerHTML = `<div class="text-muted-2 small p-4">Loading…</div>`;
+    try {
+      var stocks = await fetchFn(6);
+      if (!stocks.length) {
+        wrap.innerHTML = `<div class="text-muted-2 small p-4">${Finora.API_UNAVAILABLE_MSG}</div>`;
+        return;
+      }
+      wrap.innerHTML = stocks.map(function(s) { return renderMoverItem(s, isGainer); }).join("");
+      wrap.querySelectorAll("[data-symbol]").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          openDetail(btn.getAttribute("data-symbol"));
+        });
+      });
+    } catch (err) {
+      wrap.innerHTML = `<div class="text-muted-2 small p-4">${Finora.API_UNAVAILABLE_MSG}</div>`;
+    }
+  }
+
+  /* ============================ Detail view ======================== */
+  function initDetail(symbol) {
+    activeSymbol = symbol;
+    loadDetail(symbol);
   }
 
   function mergeCompanies(primary, secondary) {
@@ -146,7 +278,6 @@ document.addEventListener("DOMContentLoaded", function() {
     return Array.from(bySymbol.values());
   }
 
-  /* --------------------------- Detail ----------------------------- */
   async function loadDetail(symbol) {
     var run = ++detailRun;
     detailEl.innerHTML = Finora.emptyState("Loading " + symbol.toUpperCase() + "...", "bi-hourglass-split");
@@ -198,7 +329,7 @@ document.addEventListener("DOMContentLoaded", function() {
         <div class="d-flex gap-2 mt-3 flex-wrap">
           <button class="btn btn-brand" data-action="buy">Buy</button>
           <button class="btn btn-outline-brand" data-action="sell">Sell</button>
-          <button class="btn btn-ghost" data-action="watch"><i class="bi bi-star me-1"></i>Watchlist</button>
+          <button class="btn btn-ghost" data-action="toggle-watchlist"><i class="bi bi-star me-1"></i>Watchlist</button>
         </div>
       </div>
 
@@ -390,13 +521,59 @@ document.addEventListener("DOMContentLoaded", function() {
       .join("");
   }
 
-  function bindActions(s) {
-    detailEl.querySelectorAll("[data-action]").forEach(function(btn) {
-      btn.addEventListener("click", async function() {
-        var user = await Finora.authReady;
-        if (!user) { location.href = "login.html?next=market.html"; return; }
-        Finora.toast("Trading is not connected to a broker API yet (" + btn.dataset.action + " " + s.symbol + ").", "info");
-      });
+  function updateWatchButton(btn, inList) {
+    if (inList) {
+      btn.innerHTML = '<i class="bi bi-star-fill me-1"></i>In watchlist';
+      btn.classList.add("active");
+    } else {
+      btn.innerHTML = '<i class="bi bi-star me-1"></i>Watchlist';
+      btn.classList.remove("active");
+    }
+  }
+
+  function syncWatchButton(symbol) {
+    Finora.authReady.then(function(user) {
+      if (!user) return;
+      var profile = Finora.getProfile();
+      if (!profile) return;
+      var watchBtn = detailEl.querySelector('[data-action="toggle-watchlist"]');
+      if (watchBtn) updateWatchButton(watchBtn, Finora.isInWatchlist(profile.uid, symbol));
     });
   }
+
+  function bindActions(s) {
+    detailEl.querySelectorAll("[data-action]").forEach(function(btn) {
+      btn.addEventListener("click", async function(e) {
+        var action = e.currentTarget.getAttribute("data-action");
+        var user = await Finora.authReady;
+        if (!user) { location.href = "login.html?next=market.html"; return; }
+
+        if (action === "toggle-watchlist") {
+          var profile = Finora.getProfile();
+          if (!profile) { location.href = "login.html?next=market.html"; return; }
+          var added = Finora.toggleWatchlist(profile.uid, s.symbol, s.name);
+          updateWatchButton(e.currentTarget, added);
+          Finora.toast(
+            added ? s.symbol + " added to your watchlist." : s.symbol + " removed from your watchlist.",
+            added ? "success" : "info"
+          );
+          return;
+        }
+
+        Finora.toast("Trading is not connected to a broker API yet (" + action + " " + s.symbol + ").", "info");
+      });
+    });
+    syncWatchButton(s.symbol);
+  }
+
+  window.addEventListener("popstate", function() {
+    var sym = new URLSearchParams(location.search).get("symbol");
+    if (sym) {
+      activeSymbol = sym;
+      showDetailView();
+      initDetail(sym);
+    } else {
+      showBrowseView();
+    }
+  });
 });

@@ -32,6 +32,52 @@ var Finora = (function() {
     return all[uid];
   }
 
+  /* ------------------------- Watchlist (local) --------------------- */
+  function getWatchlist(uid) {
+    var extras = getExtras(uid);
+    return extras.watchlist || [];
+  }
+
+  function setWatchlist(uid, list) {
+    return setExtras(uid, { watchlist: list }).watchlist;
+  }
+
+  function watchlistSymbol(item) {
+    return (typeof item === "string" ? item : item.symbol || "").toUpperCase();
+  }
+
+  function isInWatchlist(uid, symbol) {
+    var sym = symbol.toUpperCase();
+    return getWatchlist(uid).some(function(item) {
+      return watchlistSymbol(item) === sym;
+    });
+  }
+
+  function addToWatchlist(uid, symbol, name) {
+    var sym = symbol.toUpperCase();
+    if (isInWatchlist(uid, sym)) return getWatchlist(uid);
+    var list = getWatchlist(uid).slice();
+    list.push({ symbol: sym, name: name || sym, addedAt: new Date().toISOString() });
+    return setWatchlist(uid, list);
+  }
+
+  function removeFromWatchlist(uid, symbol) {
+    var sym = symbol.toUpperCase();
+    var list = getWatchlist(uid).filter(function(item) {
+      return watchlistSymbol(item) !== sym;
+    });
+    return setWatchlist(uid, list);
+  }
+
+  function toggleWatchlist(uid, symbol, name) {
+    if (isInWatchlist(uid, symbol)) {
+      removeFromWatchlist(uid, symbol);
+      return false;
+    }
+    addToWatchlist(uid, symbol, name);
+    return true;
+  }
+
   /* ---------------------- Friendly error text ---------------------- */
   function mapAuthError(code) {
     switch (code) {
@@ -500,7 +546,18 @@ var Finora = (function() {
   }
 
   /* ------------------------- Navbar binding ------------------------ */
-  var USER_ICON = "assets/Icons/user.png";
+  function bindDropdownLinks() {
+    var slot = document.querySelector("[data-nav-auth]");
+    if (!slot || slot.dataset.dropdownBound) return;
+    slot.dataset.dropdownBound = "1";
+    slot.addEventListener("click", function(e) {
+      var link = e.target.closest(".dropdown-item[href]");
+      if (!link) return;
+      e.preventDefault();
+      e.stopPropagation();
+      window.location.href = link.getAttribute("href");
+    });
+  }
 
   function renderNavAuth() {
     var slot = document.querySelector("[data-nav-auth]");
@@ -516,10 +573,11 @@ var Finora = (function() {
         <div class="d-flex align-items-center gap-3">
           <div class="dropdown">
             <button class="nav-user-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu">
-              <img src="${USER_ICON}" alt="">
+              <i class="bi bi-person-fill" aria-hidden="true"></i>
             </button>
             <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark border-finora">
               <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person me-2"></i>My Profile</a></li>
+              <li><a class="dropdown-item" href="watchlist.html"><i class="bi bi-star me-2"></i>My Watchlist</a></li>
             </ul>
           </div>
           ${premiumLink}
@@ -528,7 +586,7 @@ var Finora = (function() {
       slot.innerHTML = `
         <div class="d-flex align-items-center gap-3">
           <a href="login.html?mode=register" class="nav-user-btn" aria-label="Create account">
-            <img src="${USER_ICON}" alt="">
+            <i class="bi bi-person-fill" aria-hidden="true"></i>
           </a>
           ${premiumLink}
         </div>`;
@@ -548,6 +606,7 @@ var Finora = (function() {
 
   function init() {
     renderNavAuth();
+    bindDropdownLinks();
     var path = window.location.pathname.split("/").pop() || "index.html";
     document.querySelectorAll(".navbar .nav-link").forEach(function(link) {
       if (link.getAttribute("href") === path) link.classList.add("active");
@@ -560,6 +619,8 @@ var Finora = (function() {
     authReady: authReady, register: register, login: login, loginWithGoogle: loginWithGoogle, resetPassword: resetPassword, logout: logout,
     getProfile: getProfile, updateProfile: updateProfile, changePassword: changePassword, deleteAccount: deleteAccount,
     requireAuth: requireAuth, mapAuthError: mapAuthError,
+    getWatchlist: getWatchlist, addToWatchlist: addToWatchlist, removeFromWatchlist: removeFromWatchlist,
+    isInWatchlist: isInWatchlist, toggleWatchlist: toggleWatchlist,
     fmtMoney: fmtMoney, fmtNumber: fmtNumber, initials: initials, toast: toast,
     emptyState: emptyState, apiUnavailableState: apiUnavailableState, emptyRow: emptyRow, symbolColor: symbolColor, logoFor: logoFor, tickerAvatar: tickerAvatar,
     API_UNAVAILABLE_MSG: API_UNAVAILABLE_MSG,
