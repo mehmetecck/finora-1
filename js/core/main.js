@@ -149,7 +149,6 @@ var Finora = (function() {
         plan: "Free", balance: 0, currency: "USD", joined: new Date().toISOString(),
       });
       saveUsers(users);
-      // Match Firebase flow: do NOT auto sign-in; user logs in next.
       return { ok: true };
     }
 
@@ -252,6 +251,7 @@ var Finora = (function() {
       await captureToken(); // start the session: grab the token for this user
       if (!firstFired) { firstFired = true; resolveReady(user); }
       renderNavAuth();
+      renderLandingCtas();
     });
   } else {
     currentUser = Local.current();
@@ -264,12 +264,22 @@ var Finora = (function() {
     var name = opts.name;
     var email = opts.email;
     var password = opts.password;
-    if (!USE_FIREBASE) return Local.register({ name: name, email: email, password: password });
+    if (!USE_FIREBASE) {
+      var res = Local.register({ name: name, email: email, password: password });
+      if (!res.ok) return res;
+      var loginRes = Local.login({ email: email, password: password, remember: true });
+      if (loginRes.ok) {
+        currentUser = loginRes.user;
+        await captureToken();
+      }
+      return { ok: true };
+    }
     try {
       var cred = await auth.createUserWithEmailAndPassword(email, password);
       if (name) await cred.user.updateProfile({ displayName: name });
       setExtras(cred.user.uid, { plan: "Free", balance: 0, currency: "USD" });
-      await auth.signOut();
+      currentUser = cred.user;
+      await captureToken();
       return { ok: true };
     } catch (e) {
       return { ok: false, code: e.code, error: mapAuthError(e.code) };
@@ -594,10 +604,20 @@ var Finora = (function() {
     return !!(slot && slot.hasAttribute("data-nav-minimal"));
   }
 
+  function setGuestNavbarHidden(hidden) {
+    var nav = document.querySelector(".navbar-nav");
+    var toggler = document.querySelector(".navbar .navbar-toggler");
+    var actions = document.querySelector(".navbar-actions");
+    if (nav) nav.classList.toggle("d-none", hidden);
+    if (toggler) toggler.classList.toggle("d-none", hidden);
+    if (actions) actions.classList.toggle("d-none", hidden);
+  }
+
   function renderNavAuthPending() {
     var slot = document.querySelector("[data-nav-auth]");
     if (!slot || slot.dataset.navAuthState === "ready") return;
-    slot.innerHTML = signedInNavMarkup(true, { hidePremium: isMinimalNavPage() });
+    slot.innerHTML = "";
+    setGuestNavbarHidden(true);
     slot.dataset.navAuthState = "pending";
   }
 
@@ -608,22 +628,11 @@ var Finora = (function() {
     var profile = getProfile();
 
     if (profile) {
+      setGuestNavbarHidden(false);
       slot.innerHTML = signedInNavMarkup(false, { hidePremium: minimal });
-    } else if (minimal) {
-      slot.innerHTML = `
-        <div class="d-flex align-items-center gap-3">
-          <a href="login.html" class="nav-user-btn" aria-label="Log in">
-            <i class="bi bi-person-fill" aria-hidden="true"></i>
-          </a>
-        </div>`;
     } else {
-      slot.innerHTML = `
-        <div class="d-flex align-items-center gap-3">
-          <a href="login.html?mode=register" class="nav-user-btn" aria-label="Create account">
-            <i class="bi bi-person-fill" aria-hidden="true"></i>
-          </a>
-          ${navPremiumMarkup()}
-        </div>`;
+      setGuestNavbarHidden(true);
+      slot.innerHTML = "";
     }
     slot.dataset.navAuthState = "ready";
     renderLandingCtas();
@@ -655,22 +664,20 @@ var Finora = (function() {
       window.location.href = "index.html";
       return false;
     }
-    if (!user && (path === "index.html" || path === "")) {
-      var nav = document.querySelector(".navbar-nav");
-      if (nav) nav.classList.add("d-none");
-    }
     return true;
   }
 
   function renderLandingCtas() {
     var path = currentPath();
     if (path !== "index.html" && path !== "") return;
+    var shell = document.querySelector("[data-landing-cta-shell]");
     var guestActions = document.querySelector("[data-landing-cta=\"guest-actions\"]");
     var signedActions = document.querySelector("[data-landing-cta=\"signed-actions\"]");
     if (!guestActions || !signedActions) return;
     var signedIn = !!getProfile();
     guestActions.classList.toggle("d-none", signedIn);
     signedActions.classList.toggle("d-none", !signedIn);
+    if (shell) shell.removeAttribute("data-landing-cta-pending");
   }
 
   async function init() {

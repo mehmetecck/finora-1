@@ -69,12 +69,41 @@ document.addEventListener("DOMContentLoaded", async function() {
     });
   });
 
+  /* ------------------------- Validation helpers ------------------- */
+  var MIN_PASSWORD = 6; // Firebase requires at least 6 characters.
+  function isEmail(v) { return v.includes("@") && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+  function clearFieldError(input) {
+    input.classList.remove("is-invalid");
+    var container = input.closest(".mb-3, .mb-2");
+    if (!container) return;
+    container.querySelectorAll(".invalid-feedback").forEach(function(f) { f.remove(); });
+  }
+
+  function fieldError(input, msg) {
+    input.classList.add("is-invalid");
+    var container = input.closest(".mb-3, .mb-2");
+    var fb = container ? container.querySelector(".invalid-feedback") : null;
+    if (!fb) {
+      fb = document.createElement("div");
+      fb.className = "invalid-feedback d-block";
+      (input.closest(".input-group") || input).insertAdjacentElement("afterend", fb);
+    }
+    fb.textContent = msg;
+  }
+  function clearErrors(form) {
+    form.querySelectorAll(".is-invalid").forEach(function(i) { i.classList.remove("is-invalid"); });
+    form.querySelectorAll(".invalid-feedback").forEach(function(f) { f.remove(); });
+    if (form === registerForm && matchHint) matchHint.textContent = "";
+  }
+
   /* ---------------------- Password strength meter ------------------ */
   var pwInput = registerForm.querySelector('[name="password"]');
   var meter = document.getElementById("pwMeter");
   var hint = document.getElementById("pwHint");
   pwInput.addEventListener("input", function() {
     var v = pwInput.value;
+    if (v.length >= MIN_PASSWORD) clearFieldError(pwInput);
     var score = 0;
     if (v.length >= 8) score++;
     if (/[A-Z]/.test(v)) score++;
@@ -118,29 +147,22 @@ document.addEventListener("DOMContentLoaded", async function() {
     confirmInput.classList.toggle("is-invalid", !ok);
     return ok;
   }
-  confirmInput.addEventListener("input", checkMatch);
+  confirmInput.addEventListener("input", function() {
+    if (confirmInput.value) clearFieldError(confirmInput);
+    checkMatch();
+  });
 
-  /* ------------------------- Validation helpers ------------------- */
-  // Basic email check: must contain "@" with text on both sides and a domain.
-  function isEmail(v) { return v.includes("@") && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
-  var MIN_PASSWORD = 6; // Firebase requires at least 6 characters.
+  function bindLiveValidation(input, isValid) {
+    input.addEventListener("input", function() {
+      if (isValid(input.value.trim())) clearFieldError(input);
+    });
+  }
 
-  function fieldError(input, msg) {
-    input.classList.add("is-invalid");
-    var container = input.closest(".mb-3, .mb-2");
-    var fb = container ? container.querySelector(".invalid-feedback") : null;
-    if (!fb) {
-      fb = document.createElement("div");
-      fb.className = "invalid-feedback d-block";
-      (input.closest(".input-group") || input).insertAdjacentElement("afterend", fb);
-    }
-    fb.textContent = msg;
-  }
-  function clearErrors(form) {
-    form.querySelectorAll(".is-invalid").forEach(function(i) { i.classList.remove("is-invalid"); });
-    form.querySelectorAll(".invalid-feedback").forEach(function(f) { f.remove(); });
-    if (form === registerForm && matchHint) matchHint.textContent = "";
-  }
+  bindLiveValidation(loginForm.email, isEmail);
+  bindLiveValidation(registerForm.email, isEmail);
+  registerForm.name.addEventListener("input", function() {
+    if (registerForm.name.value.trim().length >= 2) clearFieldError(registerForm.name);
+  });
 
   /* ------------------------- Submit helpers ----------------------- */
   function setLoading(btn, isLoading, loadingText) {
@@ -258,9 +280,8 @@ document.addEventListener("DOMContentLoaded", async function() {
       Finora.toast(res.error, "error");
       return;
     }
-    // Redirect to the Login page upon successful account creation.
-    Finora.toast("Account created! Redirecting to login…", "success");
-    setTimeout(function() { window.location.href = "login.html?registered=1"; }, 900);
+    Finora.toast("Account created! Welcome to Finora.", "success");
+    setTimeout(function() { window.location.href = "home.html"; }, 700);
   });
 
   /* ------------------------- Google login ------------------------- */
