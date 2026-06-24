@@ -3,8 +3,9 @@
    ===================================================================== */
 
 document.addEventListener("DOMContentLoaded", async function() {
-  var user = await Finora.authReady;
-  var profile = user ? Finora.getProfile() : null;
+  var user = await Finora.requireAuth();
+  if (!user) return;
+  var profile = Finora.getProfile();
 
   renderGreeting(profile);
   renderWatchlistStats(profile);
@@ -16,28 +17,19 @@ document.addEventListener("DOMContentLoaded", async function() {
   function renderGreeting(profile) {
     var greetingEl = document.getElementById("dashGreeting");
     var subEl = document.getElementById("dashSub");
-    if (profile && profile.name) {
-      greetingEl.textContent = "Welcome back, " + profile.name.split(" ")[0];
-      subEl.textContent = "Here is your Finora summary for today.";
-    } else {
-      greetingEl.textContent = "Welcome to Finora";
-      subEl.textContent = "Sign in to track your portfolio and watchlist.";
-    }
+    var firstName = profile.name ? profile.name.split(" ")[0] : "there";
+    greetingEl.textContent = "Welcome back, " + firstName;
+    subEl.textContent = "Here is your Finora summary for today.";
   }
 
   function renderWatchlistStats(profile) {
-    var count = profile ? Finora.getWatchlist(profile.uid).length : 0;
+    var count = Finora.getWatchlist(profile.uid).length;
     document.getElementById("statWatchlist").textContent = String(count);
   }
 
   async function loadPortfolioStat(user) {
     var valueEl = document.getElementById("statPortfolio");
     var subEl = document.getElementById("statPortfolioSub");
-    if (!user) {
-      valueEl.textContent = "—";
-      subEl.textContent = "Sign in to track holdings";
-      return;
-    }
     try {
       var portfolio = await FinoraAPI.getPortfolio(user.uid);
       var holdings = portfolio.holdings || [];
@@ -80,15 +72,6 @@ document.addEventListener("DOMContentLoaded", async function() {
 
   async function loadWatchlistPreview(profile) {
     var wrap = document.getElementById("dashWatchlist");
-    if (!profile) {
-      wrap.innerHTML = `<div class="text-center text-muted-2 py-4">
-          <i class="bi bi-person-circle d-block mb-2" style="font-size:1.6rem;opacity:.55"></i>
-          <div class="mb-2">Sign in to see your watchlist</div>
-          <a href="login.html?next=home.html" class="btn btn-sm btn-brand">Sign in</a>
-        </div>`;
-      return;
-    }
-
     var items = Finora.getWatchlist(profile.uid);
     if (!items.length) {
       wrap.innerHTML = `<div class="text-center text-muted-2 py-4">

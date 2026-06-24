@@ -341,12 +341,12 @@ const FinoraAPI = (() => {
     };
   }
 
-  function readStoredMovers(direction, limit) {
+  function readStoredMovers(direction, limit, country) {
     try {
       const raw = localStorage.getItem(MOVERS_STORAGE_KEY);
       if (!raw) return null;
       const all = JSON.parse(raw);
-      const entry = all[direction + ":" + limit];
+      const entry = all[direction + ":" + limit + ":" + (country || "WW")];
       if (!entry || !Array.isArray(entry.data) || Date.now() - entry.time > MOVERS_CACHE_TTL) return null;
       return entry.data;
     } catch {
@@ -354,23 +354,23 @@ const FinoraAPI = (() => {
     }
   }
 
-  function writeStoredMovers(direction, limit, data) {
+  function writeStoredMovers(direction, limit, country, data) {
     try {
       const raw = localStorage.getItem(MOVERS_STORAGE_KEY);
       const all = raw ? JSON.parse(raw) : {};
-      all[direction + ":" + limit] = { time: Date.now(), data: data };
+      all[direction + ":" + limit + ":" + (country || "WW")] = { time: Date.now(), data: data };
       localStorage.setItem(MOVERS_STORAGE_KEY, JSON.stringify(all));
     } catch {
       /* ignore storage errors */
     }
   }
 
-  async function fetchMarketMovers(direction, limit) {
+  async function fetchMarketMovers(direction, limit, country) {
     requireTwelveKey();
     const url = new URL(TWELVE_BASE + "/market_movers/stocks");
     url.searchParams.set("direction", direction);
     url.searchParams.set("outputsize", String(limit));
-    url.searchParams.set("country", "US");
+    url.searchParams.set("country", country || "US");
     url.searchParams.set("apikey", TWELVE_DATA_API_KEY);
     const data = await fetchJson(url.toString());
     return (data.values || [])
@@ -395,14 +395,14 @@ const FinoraAPI = (() => {
     return sorted.filter((item) => item.change < 0).slice(0, limit);
   }
 
-  async function getMarketMovers(direction, limit = 6) {
-    const cached = readStoredMovers(direction, limit);
+  async function getMarketMovers(direction, limit = 6, country = "") {
+    const cached = readStoredMovers(direction, limit, country);
     if (cached && cached.length) return cached;
 
     let movers = [];
     if (hasTwelveKey()) {
       try {
-        movers = await fetchMarketMovers(direction, limit);
+        movers = await fetchMarketMovers(direction, limit, country);
       } catch {
         /* fall back to catalog quotes */
       }
@@ -410,16 +410,16 @@ const FinoraAPI = (() => {
     if (!movers.length) movers = await moversFromCatalog(direction, limit);
     if (!movers.length) throw new Error(API_UNAVAILABLE_MSG);
 
-    writeStoredMovers(direction, limit, movers);
+    writeStoredMovers(direction, limit, country, movers);
     return movers;
   }
 
-  async function getGainers(limit = 6) {
-    return getMarketMovers("gainers", limit);
+  async function getGainers(limit = 6, country = "") {
+    return getMarketMovers("gainers", limit, country);
   }
 
-  async function getLosers(limit = 6) {
-    return getMarketMovers("losers", limit);
+  async function getLosers(limit = 6, country = "") {
+    return getMarketMovers("losers", limit, country);
   }
 
   async function getIndices() {

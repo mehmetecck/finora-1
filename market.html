@@ -46,12 +46,21 @@
 
     <!-- ========================= Browse hub ========================= -->
     <div id="marketBrowse">
-      <div class="market-search-wrap mb-5">
-        <div class="input-group market-search">
-          <span class="input-group-text"><i class="bi bi-search"></i></span>
-          <input type="text" id="browseSearch" class="form-control" placeholder="Search company…" autocomplete="off" />
+      <div class="market-search-row mb-5">
+        <div class="market-search-wrap market-search-wrap--country">
+          <div class="input-group market-search">
+            <span class="input-group-text"><i class="bi bi-globe2"></i></span>
+            <input type="text" id="browseCountry" class="form-control" placeholder="Worldwide / International" autocomplete="off" />
+          </div>
+          <div id="browseCountryResults" class="market-search-results d-none"></div>
         </div>
-        <div id="browseSearchResults" class="market-search-results d-none"></div>
+        <div class="market-search-wrap market-search-wrap--company">
+          <div class="input-group market-search">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" id="browseSearch" class="form-control" placeholder="Search company…" autocomplete="off" />
+          </div>
+          <div id="browseSearchResults" class="market-search-results d-none"></div>
+        </div>
       </div>
 
       <section class="mb-5">
@@ -123,7 +132,7 @@
 
   <footer class="footer mt-5">
     <div class="container text-center">
-      <span class="text-muted-2 small">© 2026 Finora. Not investment advice.</span>
+      <span class="text-muted-2 small">© 2026 Finora.</span>
     </div>
   </footer>
 

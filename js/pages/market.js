@@ -12,11 +12,55 @@ document.addEventListener("DOMContentLoaded", function() {
   var detailEl = document.getElementById("stockDetail");
   var browseSearchEl = document.getElementById("browseSearch");
   var browseResultsEl = document.getElementById("browseSearchResults");
+  var browseCountryEl = document.getElementById("browseCountry");
+  var browseCountryResultsEl = document.getElementById("browseCountryResults");
+
+  var MARKET_COUNTRIES = [
+    { code: "US", name: "United States", flag: "\uD83C\uDDFA\uD83C\uDDF8" },
+    { code: "GB", name: "United Kingdom", flag: "\uD83C\uDDEC\uD83C\uDDE7" },
+    { code: "DE", name: "Germany", flag: "\uD83C\uDDE9\uD83C\uDDEA" },
+    { code: "CA", name: "Canada", flag: "\uD83C\uDDE8\uD83C\uDDE6" },
+    { code: "AU", name: "Australia", flag: "\uD83C\uDDE6\uD83C\uDDFA" },
+    { code: "FR", name: "France", flag: "\uD83C\uDDEB\uD83C\uDDF7" },
+    { code: "JP", name: "Japan", flag: "\uD83C\uDDEF\uD83C\uDDF5" },
+    { code: "HK", name: "Hong Kong", flag: "\uD83C\uDDED\uD83C\uDDF0" },
+    { code: "IN", name: "India", flag: "\uD83C\uDDEE\uD83C\uDDF3" },
+    { code: "CN", name: "China", flag: "\uD83C\uDDE8\uD83C\uDDF3" },
+    { code: "KR", name: "South Korea", flag: "\uD83C\uDDF0\uD83C\uDDF7" },
+    { code: "SG", name: "Singapore", flag: "\uD83C\uDDF8\uD83C\uDDEC" },
+    { code: "IT", name: "Italy", flag: "\uD83C\uDDEE\uD83C\uDDF9" },
+    { code: "ES", name: "Spain", flag: "\uD83C\uDDEA\uD83C\uDDF8" },
+    { code: "NL", name: "Netherlands", flag: "\uD83C\uDDF3\uD83C\uDDF1" },
+    { code: "CH", name: "Switzerland", flag: "\uD83C\uDDE8\uD83C\uDDED" },
+    { code: "SE", name: "Sweden", flag: "\uD83C\uDDF8\uD83C\uDDEA" },
+    { code: "BR", name: "Brazil", flag: "\uD83C\uDDE7\uD83C\uDDF7" },
+    { code: "MX", name: "Mexico", flag: "\uD83C\uDDF2\uD83C\uDDFD" },
+  ];
+
+  var EXCHANGE_COUNTRY = {
+    NASDAQ: "US",
+    NYSE: "US",
+    AMEX: "US",
+    LSE: "GB",
+    XETRA: "DE",
+    TSX: "CA",
+    ASX: "AU",
+    EURONEXT: "FR",
+    TSE: "JP",
+    HKEX: "HK",
+    NSE: "IN",
+    SSE: "CN",
+    KRX: "KR",
+    SGX: "SG",
+  };
 
   var params = new URLSearchParams(location.search);
   var activeSymbol = params.get("symbol") || null;
+  var activeCountryCode = "";
   var searchTimer = null;
   var searchRun = 0;
+  var countrySearchTimer = null;
+  var countrySearchRun = 0;
   var detailRun = 0;
   var chartType = "line";
   var chartRange = "1M";
@@ -52,14 +96,98 @@ document.addEventListener("DOMContentLoaded", function() {
   function initBrowse() {
     browseSearchEl.addEventListener("input", handleBrowseSearch);
     browseSearchEl.addEventListener("focus", handleBrowseSearch);
+    browseCountryEl.addEventListener("input", handleCountrySearch);
+    browseCountryEl.addEventListener("focus", handleCountrySearch);
     document.addEventListener("click", function(e) {
       if (!e.target.closest(".market-search-wrap")) {
         browseResultsEl.classList.add("d-none");
+        browseCountryResultsEl.classList.add("d-none");
       }
     });
     loadIndices();
     loadTrending();
     loadMovers();
+  }
+
+  function findCountryByCode(code) {
+    for (var i = 0; i < MARKET_COUNTRIES.length; i++) {
+      if (MARKET_COUNTRIES[i].code === code) return MARKET_COUNTRIES[i];
+    }
+    return null;
+  }
+
+  function countryLabel(country) {
+    return country.flag + " " + country.name;
+  }
+
+  function stockCountry(stock) {
+    var exchange = (stock.exchange || "").toUpperCase();
+    return EXCHANGE_COUNTRY[exchange] || "US";
+  }
+
+  function reloadBrowseData() {
+    loadTrending();
+    loadMovers();
+  }
+
+  function handleCountrySearch() {
+    var q = browseCountryEl.value.trim().toLowerCase();
+    clearTimeout(countrySearchTimer);
+
+    if (!q) {
+      browseCountryResultsEl.classList.add("d-none");
+      browseCountryResultsEl.innerHTML = "";
+      if (activeCountryCode) {
+        activeCountryCode = "";
+        reloadBrowseData();
+      }
+      return;
+    }
+
+    if (q.length < 2) {
+      browseCountryResultsEl.classList.remove("d-none");
+      browseCountryResultsEl.innerHTML = `<div class="text-muted-2 small p-3">Type at least 2 characters…</div>`;
+      return;
+    }
+
+    var run = ++countrySearchRun;
+    countrySearchTimer = setTimeout(function() {
+      if (run !== countrySearchRun) return;
+
+      var matches = MARKET_COUNTRIES.filter(function(country) {
+        return country.name.toLowerCase().indexOf(q) !== -1 || country.code.toLowerCase().indexOf(q) === 0;
+      });
+
+      if (!matches.length) {
+        browseCountryResultsEl.classList.remove("d-none");
+        browseCountryResultsEl.innerHTML = `<div class="text-muted-2 small p-3">No matches found.</div>`;
+        return;
+      }
+
+      browseCountryResultsEl.classList.remove("d-none");
+      browseCountryResultsEl.innerHTML = matches
+        .map(function(country) {
+          return `<button type="button" class="market-search-result" data-country="${country.code}">
+              <span class="market-country-flag" aria-hidden="true">${country.flag}</span>
+              <span class="min-w-0">
+                <span class="d-block fw-semibold text-white text-truncate">${country.name}</span>
+              </span>
+            </button>`;
+        })
+        .join("");
+
+      browseCountryResultsEl.querySelectorAll("[data-country]").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          var code = btn.getAttribute("data-country");
+          var country = findCountryByCode(code);
+          if (!country) return;
+          activeCountryCode = code;
+          browseCountryEl.value = countryLabel(country);
+          browseCountryResultsEl.classList.add("d-none");
+          reloadBrowseData();
+        });
+      });
+    }, 200);
   }
 
   async function loadTicker() {
@@ -127,6 +255,10 @@ document.addEventListener("DOMContentLoaded", function() {
         results = local;
       }
 
+      if (activeCountryCode) {
+        results = results.filter(function(c) { return stockCountry(c) === activeCountryCode; });
+      }
+
       if (!results.length) {
         browseResultsEl.innerHTML = `<div class="text-muted-2 small p-3">No matches found.</div>`;
         return;
@@ -192,7 +324,10 @@ document.addEventListener("DOMContentLoaded", function() {
     if (!body) return;
     try {
       var stocks = await FinoraAPI.getTrending();
-      if (!stocks.length) { body.innerHTML = Finora.emptyRow(6, Finora.API_UNAVAILABLE_MSG); return; }
+      if (activeCountryCode) {
+        stocks = stocks.filter(function(s) { return stockCountry(s) === activeCountryCode; });
+      }
+      if (!stocks.length) { body.innerHTML = Finora.emptyRow(6, activeCountryCode ? "No trending stocks for this market." : Finora.API_UNAVAILABLE_MSG); return; }
       body.innerHTML = stocks
         .map(function(s, i) {
           var up = s.change >= 0;
@@ -248,8 +383,9 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   async function loadMovers() {
-    loadMoverColumn("gainersList", true, FinoraAPI.getGainers);
-    loadMoverColumn("losersList", false, FinoraAPI.getLosers);
+    var country = activeCountryCode || "";
+    loadMoverColumn("gainersList", true, function(limit) { return FinoraAPI.getGainers(limit, country); });
+    loadMoverColumn("losersList", false, function(limit) { return FinoraAPI.getLosers(limit, country); });
   }
 
   function renderMoverItem(stock, isGainer) {
@@ -562,25 +698,19 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function syncWatchButton(symbol) {
-    Finora.authReady.then(function(user) {
-      if (!user) return;
-      var profile = Finora.getProfile();
-      if (!profile) return;
-      var watchBtn = detailEl.querySelector('[data-action="toggle-watchlist"]');
-      if (watchBtn) updateWatchButton(watchBtn, Finora.isInWatchlist(profile.uid, symbol));
-    });
+    var profile = Finora.getProfile();
+    if (!profile) return;
+    var watchBtn = detailEl.querySelector('[data-action="toggle-watchlist"]');
+    if (watchBtn) updateWatchButton(watchBtn, Finora.isInWatchlist(profile.uid, symbol));
   }
 
   function bindActions(s) {
+    var profile = Finora.getProfile();
     detailEl.querySelectorAll("[data-action]").forEach(function(btn) {
-      btn.addEventListener("click", async function(e) {
+      btn.addEventListener("click", function(e) {
         var action = e.currentTarget.getAttribute("data-action");
-        var user = await Finora.authReady;
-        if (!user) { location.href = "login.html?next=market.html"; return; }
 
         if (action === "toggle-watchlist") {
-          var profile = Finora.getProfile();
-          if (!profile) { location.href = "login.html?next=market.html"; return; }
           var added = Finora.toggleWatchlist(profile.uid, s.symbol, s.name);
           updateWatchButton(e.currentTarget, added);
           Finora.toast(

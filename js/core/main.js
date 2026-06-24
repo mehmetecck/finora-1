@@ -594,20 +594,44 @@ var Finora = (function() {
   }
 
   /* Protect pages that require auth (async — waits for Firebase). */
-  async function requireAuth(nextPath) {
-    if (nextPath === undefined) nextPath = window.location.pathname.split("/").pop() || "profile.html";
+  async function requireAuth() {
     var user = await authReady;
     if (!user) {
-      window.location.href = "login.html?next=" + encodeURIComponent(nextPath);
+      window.location.href = "index.html";
       return null;
     }
     return user;
   }
 
-  function init() {
+  function currentPath() {
+    return window.location.pathname.split("/").pop() || "index.html";
+  }
+
+  function isPublicPage(path) {
+    return path === "index.html" || path === "login.html" || path === "";
+  }
+
+  async function guardRoutes() {
+    var path = currentPath();
+    var user = await authReady;
+
+    if (!user && !isPublicPage(path)) {
+      window.location.href = "index.html";
+      return false;
+    }
+    if (!user && (path === "index.html" || path === "")) {
+      var nav = document.querySelector(".navbar-nav");
+      if (nav) nav.classList.add("d-none");
+    }
+    return true;
+  }
+
+  async function init() {
+    var allowed = await guardRoutes();
+    if (!allowed) return;
     renderNavAuth();
     bindDropdownLinks();
-    var path = window.location.pathname.split("/").pop() || "index.html";
+    var path = currentPath();
     document.querySelectorAll(".navbar .nav-link").forEach(function(link) {
       if (link.getAttribute("href") === path) link.classList.add("active");
     });

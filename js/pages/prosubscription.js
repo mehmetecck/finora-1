@@ -76,13 +76,6 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   async function buy(planId) {
-    var user = Finora.getProfile();
-    if (!user) {
-      Finora.toast("Please log in to upgrade.", "info");
-      setTimeout(function() { window.location.href = "login.html?next=prosubscription.html"; }, 800);
-      return;
-    }
-    // Demo checkout — just update the stored plan.
     await Finora.updateProfile({ plan: planId });
     Finora.toast("You're now on the " + planId + " plan! (demo)", "success");
     render();

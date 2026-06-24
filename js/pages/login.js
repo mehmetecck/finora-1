@@ -4,8 +4,8 @@
 
 document.addEventListener("DOMContentLoaded", async function() {
   var params = new URLSearchParams(window.location.search);
-  var requestedNext = params.get("next") || "profile.html";
-  var next = /^(https?:)?\/\//i.test(requestedNext) ? "profile.html" : requestedNext;
+  var requestedNext = params.get("next") || "home.html";
+  var next = /^(https?:)?\/\//i.test(requestedNext) ? "home.html" : requestedNext;
 
   // If already logged in, go straight to profile.
   var existing = await Finora.authReady;

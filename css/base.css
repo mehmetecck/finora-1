@@ -130,6 +130,14 @@ a:hover { color: var(--brand); }
 .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
 .btn-ghost:hover { background: var(--bg-elevated); color: var(--text-primary); border-color: var(--brand); }
 
+/* Pill toggle (login tabs, billing toggle, etc.) */
+.auth-tabs { display: flex; background: var(--bg-main); border: 1px solid var(--border); border-radius: 999px; padding: 4px; gap: 4px; }
+.auth-tabs button {
+  flex: 1; border: none; background: transparent; color: var(--text-muted);
+  font-weight: 600; padding: 0.55rem; border-radius: 999px; transition: all var(--transition);
+}
+.auth-tabs button.active { background: var(--brand); color: #021014; }
+
 .btn-premium {
   background: var(--premium-gradient);
   background-size: 200% 200%;
