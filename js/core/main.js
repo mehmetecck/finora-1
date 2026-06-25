@@ -288,6 +288,7 @@ var Finora = (function() {
     try {
       await setAuthPersistence(remember);
       var cred = await auth.signInWithEmailAndPassword(email, password);
+      localStorage.setItem("finora_session_active", "true");
       currentUser = cred.user;
       await captureToken(); // capture the auth token & start the session
       return { ok: true, user: cred.user, token: idToken };
@@ -309,6 +310,7 @@ var Finora = (function() {
       var provider = new firebase.auth.GoogleAuthProvider();
       provider.setCustomParameters({ prompt: "select_account" });
       var cred = await auth.signInWithPopup(provider);
+      localStorage.setItem("finora_session_active", "true");
       var extras = getExtras(cred.user.uid);
       if (!extras.plan) setExtras(cred.user.uid, { plan: "Free", balance: 0, currency: "USD" });
       currentUser = cred.user;
@@ -334,6 +336,7 @@ var Finora = (function() {
   function logout() {
     function go() { window.location.href = "index.html"; }
     idToken = null; // end the session
+    localStorage.removeItem("finora_session_active");
     if (!USE_FIREBASE) { Local.clearSession(); currentUser = null; go(); return; }
     auth.signOut().finally(go);
   }

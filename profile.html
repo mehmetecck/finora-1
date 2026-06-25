@@ -11,8 +11,8 @@
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
-  <link href="css/base.css" rel="stylesheet" />
-  <link href="css/pages/profile.css" rel="stylesheet" />
+  <link href="assets/css/styles.css" rel="stylesheet" />
+  <script src="js/core/auth-init.js"></script>
 </head>
 <body>
 
@@ -29,32 +29,34 @@
       </div>
       <div class="collapse navbar-collapse" id="nav">
         <ul class="navbar-nav mx-auto gap-1">
-          <li class="nav-item"><a class="nav-link" href="home.html">Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
           <li class="nav-item"><a class="nav-link" href="market.html">Market</a></li>
+          <li class="nav-item"><a class="nav-link" href="portfolio.html">Portfolio</a></li>
         </ul>
       </div>
-      <div class="navbar-actions" data-nav-auth data-nav-minimal></div>
+      <div class="navbar-actions" data-nav-auth></div>
     </div>
   </nav>
 
   <main class="container py-4">
     <!-- ============================ Header =========================== -->
     <div class="card-finora overflow-hidden mb-4">
-      <div class="px-4 py-4">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-          <div class="d-flex align-items-center gap-3">
-            <div class="profile-avatar" id="avatar">…</div>
-            <div>
-              <h4 class="fw-bold mb-0" id="profileName">Loading…</h4>
-              <div class="text-muted-2"><i class="bi bi-envelope me-1"></i><span id="profileEmail">—</span></div>
+      <div class="profile-cover"></div>
+      <div class="px-4 pb-4">
+        <div class="d-flex flex-wrap align-items-end justify-content-between gap-3">
+          <div class="d-flex align-items-end gap-3">
+            <div class="profile-avatar" id="avatar">JD</div>
+            <div class="pb-2">
+              <h4 class="fw-bold mb-0" id="profileName">Jane Doe</h4>
+              <div class="text-muted-2"><i class="bi bi-envelope me-1"></i><span id="profileEmail">jane@example.com</span></div>
               <div class="mt-2 d-flex gap-2">
-                <span class="badge badge-gold" id="planBadge"><i class="bi bi-star-fill me-1"></i>—</span>
-                <span class="badge badge-soft"><i class="bi bi-calendar3 me-1"></i><span id="joinedBadge">—</span></span>
+                <span class="badge badge-gold" id="planBadge"><i class="bi bi-star-fill me-1"></i>Free plan</span>
+                <span class="badge badge-soft"><i class="bi bi-calendar3 me-1"></i><span id="joinedBadge">Joined recently</span></span>
               </div>
             </div>
           </div>
-          <div class="d-flex gap-2">
-            <a href="prosubscription.html" class="btn btn-premium"><i class="bi bi-stars me-1"></i>Upgrade to Premium</a>
+          <div class="pb-2 d-flex gap-2">
+            <button class="btn btn-premium"><i class="bi bi-stars me-1"></i>Upgrade to Premium</button>
             <button class="btn btn-ghost" data-logout-btn><i class="bi bi-box-arrow-right me-1"></i>Log out</button>
           </div>
         </div>
@@ -67,6 +69,7 @@
         <div class="card-finora p-2 profile-nav" id="profileTabs">
           <div class="list-group list-group-flush">
             <button class="list-group-item active" data-target="overview"><i class="bi bi-grid-1x2"></i> Overview</button>
+            <button class="list-group-item" data-target="portfolio"><i class="bi bi-briefcase"></i> Portfolio</button>
             <button class="list-group-item" data-target="settings"><i class="bi bi-gear"></i> Account settings</button>
             <button class="list-group-item" data-target="security"><i class="bi bi-shield-lock"></i> Security</button>
           </div>
@@ -74,7 +77,8 @@
 
         <div class="card-elevated p-3 mt-3">
           <div class="text-muted-2 small mb-1">Buying power</div>
-          <div class="fs-4 fw-bold text-brand" id="buyingPower">—</div>
+          <div class="fs-4 fw-bold text-brand" id="buyingPower">$25,000.00</div>
+          <button class="btn btn-outline-brand btn-sm w-100 mt-2"><i class="bi bi-plus-lg me-1"></i>Add funds</button>
         </div>
       </div>
 
@@ -87,29 +91,29 @@
             <div class="col-sm-6 col-xl-3">
               <div class="stat-card h-100">
                 <div class="label mb-1"><i class="bi bi-wallet2 me-1"></i>Portfolio value</div>
-                <div class="value" id="statPortfolio">—</div>
-                <span class="badge mt-1 d-none" id="statPortfolioBadge"></span>
+                <div class="value" id="statPortfolio">$0.00</div>
+                <span class="badge badge-bull mt-1"><i class="bi bi-caret-up-fill"></i> 12.4%</span>
               </div>
             </div>
             <div class="col-sm-6 col-xl-3">
               <div class="stat-card h-100">
                 <div class="label mb-1"><i class="bi bi-graph-up me-1"></i>Today's P/L</div>
-                <div class="value" id="statTodayPL">—</div>
-                <span class="badge mt-1 d-none" id="statTodayPLBadge"></span>
+                <div class="value text-bull">+$482.17</div>
+                <span class="badge badge-bull mt-1"><i class="bi bi-caret-up-fill"></i> 1.92%</span>
               </div>
             </div>
             <div class="col-sm-6 col-xl-3">
               <div class="stat-card h-100">
                 <div class="label mb-1"><i class="bi bi-cash-coin me-1"></i>Buying power</div>
-                <div class="value" id="statBuying">—</div>
+                <div class="value" id="statBuying">$25,000</div>
                 <span class="text-muted-2 small">Available to trade</span>
               </div>
             </div>
             <div class="col-sm-6 col-xl-3">
               <div class="stat-card h-100">
                 <div class="label mb-1"><i class="bi bi-pie-chart me-1"></i>Holdings</div>
-                <div class="value" id="statHoldings">—</div>
-                <span class="text-muted-2 small" id="statHoldingsSub">—</span>
+                <div class="value" id="statHoldings">0</div>
+                <span class="text-muted-2 small">Across 3 sectors</span>
               </div>
             </div>
           </div>
@@ -128,6 +132,31 @@
           </div>
         </section>
 
+        <!-- Portfolio -->
+        <section class="tab-pane-fade" data-pane="portfolio" id="portfolio">
+          <div class="card-finora">
+            <div class="p-4 d-flex justify-content-between align-items-center">
+              <h5 class="fw-bold mb-0">Your holdings</h5>
+              <a href="index.html#trending" class="btn btn-brand btn-sm"><i class="bi bi-plus-lg me-1"></i>Buy stocks</a>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-finora">
+                <thead>
+                  <tr>
+                    <th>Asset</th>
+                    <th class="text-end">Shares</th>
+                    <th class="text-end">Avg cost</th>
+                    <th class="text-end">Price</th>
+                    <th class="text-end">Value</th>
+                    <th class="text-end">Total return</th>
+                  </tr>
+                </thead>
+                <tbody id="holdingsBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
         <!-- Settings -->
         <section class="tab-pane-fade" data-pane="settings">
           <div class="card-finora p-4 mb-4">
@@ -143,7 +172,7 @@
                   <input type="email" class="form-control" name="email" required />
                 </div>
                 <div class="col-md-6">
-                  <label class="form-label">Phone (optional)</label>
+                  <label class="form-label">Phone</label>
                   <input type="tel" class="form-control" name="phone" placeholder="+1 (555) 000-0000" />
                 </div>
                 <div class="col-md-6">
@@ -158,7 +187,7 @@
                   </select>
                 </div>
                 <div class="col-12">
-                  <label class="form-label">Bio (optional)</label>
+                  <label class="form-label">Bio</label>
                   <textarea class="form-control" name="bio" rows="3" placeholder="Tell us about your investing style..."></textarea>
                 </div>
               </div>
@@ -181,14 +210,6 @@
               <div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked /></div>
             </div>
             <hr class="divider-line my-2" />
-            <div class="d-flex justify-content-between align-items-center py-2 flex-wrap gap-3">
-              <div><div class="fw-semibold">Display currency</div><div class="text-muted-2 small">Show prices and balances in US dollars or euros.</div></div>
-              <div class="auth-tabs profile-currency-toggle" id="currencyToggle">
-                <button type="button" data-currency="USD">USD ($)</button>
-                <button type="button" data-currency="EUR">EUR (€)</button>
-              </div>
-            </div>
-            <hr class="divider-line my-2" />
             <div class="d-flex justify-content-between align-items-center py-2">
               <div><div class="fw-semibold">Product announcements</div><div class="text-muted-2 small">New features and occasional offers.</div></div>
               <div class="form-check form-switch"><input class="form-check-input" type="checkbox" /></div>
@@ -204,24 +225,15 @@
               <div class="row g-3">
                 <div class="col-md-12">
                   <label class="form-label">Current password</label>
-                  <div class="input-group">
-                    <input type="password" class="form-control" name="current" autocomplete="current-password" required />
-                    <button class="btn btn-social" type="button" data-toggle-pw aria-label="Show current password"><i class="bi bi-eye"></i></button>
-                  </div>
+                  <input type="password" class="form-control" name="current" required />
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">New password</label>
-                  <div class="input-group">
-                    <input type="password" class="form-control" name="next" autocomplete="new-password" required />
-                    <button class="btn btn-social" type="button" data-toggle-pw aria-label="Show new password"><i class="bi bi-eye"></i></button>
-                  </div>
+                  <input type="password" class="form-control" name="next" required />
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Confirm new password</label>
-                  <div class="input-group">
-                    <input type="password" class="form-control" name="confirm" autocomplete="new-password" required />
-                    <button class="btn btn-social" type="button" data-toggle-pw aria-label="Show confirm password"><i class="bi bi-eye"></i></button>
-                  </div>
+                  <input type="password" class="form-control" name="confirm" required />
                 </div>
               </div>
               <button type="submit" class="btn btn-brand mt-3">Update password</button>
@@ -258,7 +270,6 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="js/core/firebase-config.js"></script>
   <script src="js/core/main.js"></script>
   <script src="js/core/charts.js"></script>

@@ -11,8 +11,8 @@
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
-  <link href="css/base.css" rel="stylesheet" />
-  <link href="css/pages/market.css" rel="stylesheet" />
+  <link href="assets/css/styles.css" rel="stylesheet" />
+  <script src="js/core/auth-init.js"></script>
 </head>
 <body>
 
@@ -29,117 +29,44 @@
       </div>
       <div class="collapse navbar-collapse" id="nav">
         <ul class="navbar-nav mx-auto gap-1">
-          <li class="nav-item"><a class="nav-link" href="home.html">Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
           <li class="nav-item"><a class="nav-link" href="market.html">Market</a></li>
+          <li class="nav-item"><a class="nav-link" href="portfolio.html">Portfolio</a></li>
         </ul>
       </div>
       <div class="navbar-actions" data-nav-auth></div>
     </div>
   </nav>
 
-  <div class="ticker-tape">
-    <div class="ticker-track" id="tickerTrack"><!-- filled by JS --></div>
-  </div>
-
   <main class="container py-4">
+    <div class="row g-4">
 
-    <!-- ========================= Browse hub ========================= -->
-    <div id="marketBrowse">
-      <div class="market-search-row mb-5">
-        <div class="market-search-wrap market-search-wrap--country">
-          <div class="input-group market-search">
-            <span class="input-group-text"><i class="bi bi-globe2"></i></span>
-            <input type="text" id="browseCountry" class="form-control" placeholder="Worldwide / International" autocomplete="off" />
-          </div>
-          <div id="browseCountryResults" class="market-search-results d-none"></div>
-        </div>
-        <div class="market-search-wrap market-search-wrap--company">
-          <div class="input-group market-search">
+      <!-- ===================== Companies sidebar ==================== -->
+      <div class="col-lg-3">
+        <div class="card-finora p-3">
+          <div class="input-group mb-3">
             <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input type="text" id="browseSearch" class="form-control" placeholder="Search company…" autocomplete="off" />
+            <input type="text" id="stockSearch" class="form-control" placeholder="Search company…" />
           </div>
-          <div id="browseSearchResults" class="market-search-results d-none"></div>
+          <div class="text-muted-2 small fw-semibold text-uppercase mb-2" style="letter-spacing:.06em">Companies</div>
+          <div id="stockList" class="d-grid gap-1" style="max-height:70vh;overflow:auto"></div>
         </div>
       </div>
 
-      <section class="mb-5">
-        <div class="mb-4">
-          <div class="eyebrow mb-1">Most active</div>
-          <h2 class="section-title">Trending stocks</h2>
-        </div>
-        <div class="card-finora">
-          <div class="table-responsive">
-            <table class="table table-finora align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Company</th>
-                  <th class="text-end">Price</th>
-                  <th class="text-end">Change</th>
-                  <th class="text-end d-none d-md-table-cell">Market cap</th>
-                  <th class="text-end d-none d-lg-table-cell">7d</th>
-                  <th class="text-end">Trade</th>
-                </tr>
-              </thead>
-              <tbody id="trendingBody"><!-- filled by JS --></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <section class="mb-5">
-        <div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-2">
-          <div>
-            <div class="eyebrow mb-1">Global markets</div>
-            <h2 class="section-title">Major indices today</h2>
-          </div>
-          <span class="text-muted-2 small"><i class="bi bi-circle-fill text-bull" style="font-size:.5rem"></i> Live · updates every few seconds</span>
-        </div>
-        <div class="row g-3" id="indicesRow"><!-- filled by JS --></div>
-      </section>
-
-      <section>
-        <div class="row g-4">
-          <div class="col-lg-6">
-            <div class="card-finora market-movers-card h-100">
-              <div class="market-movers-head">
-                <h3 class="fw-bold mb-0">Stock gainers</h3>
-              </div>
-              <div id="gainersList" class="market-movers-list"><!-- filled by JS --></div>
-            </div>
-          </div>
-          <div class="col-lg-6">
-            <div class="card-finora market-movers-card h-100">
-              <div class="market-movers-head">
-                <h3 class="fw-bold mb-0">Stock losers</h3>
-              </div>
-              <div id="losersList" class="market-movers-list"><!-- filled by JS --></div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <!-- ======================= Stock detail ====================== -->
+      <div class="col-lg-9" id="stockDetail"><!-- filled by JS --></div>
     </div>
-
-    <!-- ========================= Stock detail ======================= -->
-    <div id="marketDetail" class="d-none">
-      <div class="mb-3">
-        <a href="market.html" class="btn btn-ghost btn-sm"><i class="bi bi-arrow-left me-1"></i>Back to markets</a>
-      </div>
-      <div id="stockDetail"><!-- filled by JS --></div>
-    </div>
-
   </main>
 
   <footer class="footer mt-5">
     <div class="container text-center">
-      <span class="text-muted-2 small">© 2026 Finora.</span>
+      <span class="text-muted-2 small">© 2026 Finora. Not investment advice.</span>
     </div>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
   <script src="js/core/firebase-config.js"></script>
   <script src="js/core/main.js"></script>
   <script src="js/core/charts.js"></script>
