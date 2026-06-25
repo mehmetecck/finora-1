@@ -578,9 +578,9 @@ var Finora = (function() {
       : ' class="nav-user-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu"';
     var menu = pending ? "" : `
             <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark border-finora">
-              <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person me-2"></i>My Profile</a></li>
-              <li><a class="dropdown-item" href="portfolio.html"><i class="bi bi-briefcase me-2"></i>My Portfolio</a></li>
-              <li><a class="dropdown-item" href="watchlist.html"><i class="bi bi-star me-2"></i>My Watchlist</a></li>
+              <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person-circle me-2"></i>My Profile</a></li>
+              <li><hr class="dropdown-divider border-finora"></li>
+              <li><button class="dropdown-item" type="button" data-logout-btn><i class="bi bi-box-arrow-right me-2"></i>Log out</button></li>
             </ul>`;
     return `<div class="d-flex align-items-center gap-3${pendingCls}">
           <div class="dropdown">
@@ -590,6 +590,15 @@ var Finora = (function() {
           </div>
           ${hidePremium ? "" : navPremiumMarkup()}
         </div>`;
+  }
+
+  function bindLogout(slot) {
+    const btn = slot.querySelector("[data-logout-btn]");
+    if (btn) {
+      btn.addEventListener("click", logout);
+      return true;
+    }
+    return false;
   }
 
   function isMinimalNavPage() {
@@ -612,6 +621,7 @@ var Finora = (function() {
 
     if (profile) {
       slot.innerHTML = signedInNavMarkup(false, { hidePremium: minimal });
+      bindLogout(slot);
     } else if (minimal) {
       slot.innerHTML = `
         <div class="d-flex align-items-center gap-3">
@@ -677,10 +687,10 @@ var Finora = (function() {
   }
 
   async function init() {
-    renderNavAuthPending();
+    renderNavAuthPending(); // Then show pending state
     var allowed = await guardRoutes();
     if (!allowed) return;
-    renderNavAuth();
+    renderNavAuth(); // Then render final auth state
     renderLandingCtas();
     bindDropdownLinks();
     var path = currentPath();
@@ -689,11 +699,10 @@ var Finora = (function() {
     });
   }
 
-  document.addEventListener("DOMContentLoaded", init);
-
   return {
     authReady: authReady, register: register, login: login, loginWithGoogle: loginWithGoogle, resetPassword: resetPassword, logout: logout,
     getProfile: getProfile, updateProfile: updateProfile, changePassword: changePassword, deleteAccount: deleteAccount,
+    init: init,
     requireAuth: requireAuth, mapAuthError: mapAuthError,
     getWatchlist: getWatchlist, removeFromWatchlist: removeFromWatchlist,
     isInWatchlist: isInWatchlist, toggleWatchlist: toggleWatchlist,

@@ -1,58 +1,83 @@
 /* =====================================================================
    Finora — Home dashboard logic
+   Pulls live data from FinoraAPI. Renders empty states until the market
+   data API is configured (js/core/api.js).
    ===================================================================== */
 
 document.addEventListener("DOMContentLoaded", async function() {
-  var user = await Finora.requireAuth();
-  if (!user) return;
-  var profile = Finora.getProfile();
+  // First, ensure the user is authenticated. If not, they will be redirected.
+  const fbUser = await Finora.requireAuth();
+  if (!fbUser) return;
+
+  // Get the normalized user profile, which contains name, plan, etc.
+  const profile = Finora.getProfile();
 
   renderGreeting(profile);
   renderWatchlistStats(profile);
-  loadPortfolioStat(user);
+  loadPortfolioStat(profile);
   loadTrendingPreview();
   loadWatchlistPreview(profile);
   loadIndicesPreview();
 
+  /**
+   * Personalizes the dashboard greeting with the user's first name.
+   */
   function renderGreeting(profile) {
-    var greetingEl = document.getElementById("dashGreeting");
-    var subEl = document.getElementById("dashSub");
-    var firstName = profile.name ? profile.name.split(" ")[0] : "there";
-    greetingEl.textContent = "Welcome back, " + firstName;
-    subEl.textContent = "Here is your Finora summary for today.";
+    const greetingEl = document.getElementById("dashGreeting");
+    const subEl = document.getElementById("dashSub");
+    if (greetingEl && subEl && profile) {
+      const firstName = profile.name ? profile.name.split(" ")[0] : "there";
+      greetingEl.textContent = `Welcome back, ${firstName}`;
+      subEl.textContent = "Here is your Finora summary for today.";
+      greetingEl.classList.remove("loading");
+    }
   }
 
+  /**
+   * Updates the "Watchlist" stat card with the number of saved symbols.
+   */
   function renderWatchlistStats(profile) {
-    var count = Finora.getWatchlist(profile.uid).length;
-    document.getElementById("statWatchlist").textContent = String(count);
+    if (profile) {
+      const count = Finora.getWatchlist(profile.uid).length;
+      document.getElementById("statWatchlist").textContent = String(count);
+    }
   }
 
-  async function loadPortfolioStat(user) {
-    var valueEl = document.getElementById("statPortfolio");
-    var subEl = document.getElementById("statPortfolioSub");
+  /**
+   * Fetches portfolio data to populate the "Portfolio value" stat card.
+   * Note: This is a placeholder as the API currently returns empty data.
+   */
+  async function loadPortfolioStat(profile) {
+    const valueEl = document.getElementById("statPortfolio");
+    const subEl = document.getElementById("statPortfolioSub");
     try {
-      var portfolio = await FinoraAPI.getPortfolio(user.uid);
-      var holdings = portfolio.holdings || [];
-      var cash = portfolio.cash || 0;
-      var value = holdings.reduce(function(sum, h) { return sum + h.shares * h.price; }, 0) + cash;
+      const portfolio = await FinoraAPI.getPortfolio(profile.uid);
+      const holdings = portfolio.holdings || [];
+      const cash = portfolio.cash || 0;
+      const value = holdings.reduce((sum, h) => sum + h.shares * h.price, 0) + cash;
       valueEl.textContent = Finora.fmtMoney(value);
-      subEl.textContent = holdings.length ? holdings.length + " holdings" : "No holdings yet";
+      subEl.textContent = holdings.length ? `${holdings.length} holdings` : "No holdings yet";
     } catch (err) {
       valueEl.textContent = Finora.fmtMoney(0);
       subEl.textContent = "No holdings yet";
     }
   }
 
+  /**
+   * Fetches trending stocks and populates the "Market snapshot" card.
+   */
   async function loadTrendingPreview() {
-    var wrap = document.getElementById("dashTrending");
-    var statEl = document.getElementById("statTrending");
+    const wrap = document.getElementById("dashTrending");
+    const statEl = document.getElementById("statTrending");
     try {
-      var stocks = await FinoraAPI.getTrending();
+      const stocks = await FinoraAPI.getTrending();
       if (!stocks.length) throw new Error("empty");
       statEl.textContent = String(stocks.length);
-      wrap.innerHTML = stocks.slice(0, 5).map(function(s) {
-        var up = (s.change || 0) >= 0;
-        return `<a href="market.html?symbol=${s.symbol}" class="dash-list-item">
+      wrap.innerHTML = stocks
+        .slice(0, 5)
+        .map((s) => {
+          const up = (s.change || 0) >= 0;
+          return `<a href="market.html?symbol=${s.symbol}" class="dash-list-item">
             ${Finora.tickerAvatar(s.symbol, { size: "sm", color: s.color })}
             <span class="flex-grow-1 min-w-0">
               <span class="d-block fw-semibold text-white text-truncate">${s.symbol}</span>
@@ -63,16 +88,20 @@ document.addEventListener("DOMContentLoaded", async function() {
               <span class="d-block small ${up ? "text-bull" : "text-bear"}">${s.change != null ? (up ? "+" : "") + s.change.toFixed(2) + "%" : "—"}</span>
             </span>
           </a>`;
-      }).join("");
+        })
+        .join("");
     } catch (err) {
       statEl.textContent = "—";
       wrap.innerHTML = Finora.emptyState(Finora.API_UNAVAILABLE_MSG, "bi-graph-up");
     }
   }
 
+  /**
+   * Fetches quotes for the user's watchlist and populates the "Your watchlist" card.
+   */
   async function loadWatchlistPreview(profile) {
-    var wrap = document.getElementById("dashWatchlist");
-    var items = Finora.getWatchlist(profile.uid);
+    const wrap = document.getElementById("dashWatchlist");
+    const items = Finora.getWatchlist(profile.uid);
     if (!items.length) {
       wrap.innerHTML = `<div class="text-center text-muted-2 py-4">
           <i class="bi bi-star d-block mb-2" style="font-size:1.6rem;opacity:.55"></i>
@@ -83,30 +112,21 @@ document.addEventListener("DOMContentLoaded", async function() {
     }
 
     wrap.innerHTML = `<div class="text-muted-2 small py-3">Loading watchlist…</div>`;
-    var rows = [];
-    var slice = items.slice(0, 5);
-    for (var i = 0; i < slice.length; i++) {
-      var item = slice[i];
-      var symbol = typeof item === "string" ? item : item.symbol;
-      var name = typeof item === "string" ? symbol : (item.name || symbol);
-      var quote = null;
+    const quotePromises = items.slice(0, 5).map(async (item) => {
+      const symbol = typeof item === "string" ? item : item.symbol;
       try {
-        quote = await FinoraAPI.getStock(symbol);
-      } catch (err) {
-        quote = null;
+        return await FinoraAPI.getStock(symbol);
+      } catch {
+        return { symbol, name: item.name || symbol, price: null, change: null };
       }
-      rows.push({
-        symbol: symbol,
-        name: quote && quote.name ? quote.name : name,
-        price: quote ? quote.price : null,
-        change: quote ? quote.change : null,
-      });
-    }
+    });
+    const rows = await Promise.all(quotePromises);
 
-    wrap.innerHTML = rows.map(function(s) {
-      var up = (s.change || 0) >= 0;
-      var hasChange = s.change != null && Number.isFinite(s.change);
-      return `<a href="watchlist.html?symbol=${encodeURIComponent(s.symbol)}" class="dash-list-item">
+    wrap.innerHTML = rows
+      .map((s) => {
+        const up = (s.change || 0) >= 0;
+        const hasChange = s.change != null && Number.isFinite(s.change);
+        return `<a href="watchlist.html?symbol=${encodeURIComponent(s.symbol)}" class="dash-list-item">
           ${Finora.tickerAvatar(s.symbol, { size: "sm" })}
           <span class="flex-grow-1 min-w-0">
             <span class="d-block fw-semibold text-white text-truncate">${s.symbol}</span>
@@ -117,22 +137,27 @@ document.addEventListener("DOMContentLoaded", async function() {
             <span class="d-block small ${hasChange ? (up ? "text-bull" : "text-bear") : "text-muted-2"}">${hasChange ? (up ? "+" : "") + s.change.toFixed(2) + "%" : "—"}</span>
           </span>
         </a>`;
-    }).join("");
+      })
+      .join("");
   }
 
+  /**
+   * Fetches major market indices and populates the "Major indices" section.
+   */
   async function loadIndicesPreview() {
-    var row = document.getElementById("dashIndices");
-    var statEl = document.getElementById("statIndices");
-    var subEl = document.getElementById("statIndicesSub");
+    const row = document.getElementById("dashIndices");
+    const statEl = document.getElementById("statIndices");
+    const subEl = document.getElementById("statIndicesSub");
     try {
-      var indices = await FinoraAPI.getIndices();
+      const indices = await FinoraAPI.getIndices();
       if (!indices.length) throw new Error("empty");
       statEl.textContent = String(indices.length);
-      var avg = indices.reduce(function(sum, idx) { return sum + (idx.change || 0); }, 0) / indices.length;
-      subEl.textContent = (avg >= 0 ? "+" : "") + avg.toFixed(2) + "% avg today";
-      row.innerHTML = indices.map(function(idx) {
-        var up = (idx.change || 0) >= 0;
-        return `<div class="col-6 col-lg-3">
+      const avg = indices.reduce((sum, idx) => sum + (idx.change || 0), 0) / indices.length;
+      subEl.textContent = `${avg >= 0 ? "+" : ""}${avg.toFixed(2)}% avg today`;
+      row.innerHTML = indices
+        .map((idx) => {
+          const up = (idx.change || 0) >= 0;
+          return `<div class="col-6 col-lg-3">
             <div class="dash-index-card">
               <div class="text-muted-2 small fw-semibold mb-1">${idx.name}</div>
               <div class="fs-5 fw-bold mb-1">${idx.value != null ? Finora.fmtNumber(idx.value) : "—"}</div>
@@ -141,7 +166,8 @@ document.addEventListener("DOMContentLoaded", async function() {
               </span>
             </div>
           </div>`;
-      }).join("");
+        })
+        .join("");
     } catch (err) {
       statEl.textContent = "—";
       subEl.textContent = "Unavailable";
