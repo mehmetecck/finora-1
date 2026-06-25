@@ -20,6 +20,7 @@ var Finora = (function() {
   var EXTRAS_KEY = "finora_profile_extras";
   var LOCAL_USERS = "finora_local_users";
   var LOCAL_SESSION = "finora_local_session";
+  var EMAIL_LINK_KEY = "finora_email_link_signin";
 
   /* --------------------- Profile extras (local) -------------------- */
   function allExtras() { return JSON.parse(localStorage.getItem(EXTRAS_KEY) || "{}"); }
@@ -100,6 +101,10 @@ var Finora = (function() {
       case "auth/account-exists-with-different-credential": return "An account already exists with this email. Try logging in with your password.";
       case "auth/operation-not-allowed": return "This sign-in method isn't enabled for this Firebase project.";
       case "auth/unauthorized-domain": return "This domain is not authorized in Firebase Authentication settings.";
+      case "auth/invalid-continue-uri": return "The confirmation email redirect URL is not valid.";
+      case "auth/missing-continue-uri": return "The confirmation email redirect URL is missing.";
+      case "auth/invalid-action-code": return "This email login link is invalid or has already been used.";
+      case "auth/expired-action-code": return "This email login link has expired. Request a new one.";
       case "auth/invalid-api-key":
       case "auth/configuration-not-found": return "Firebase is not configured yet. Add your config in js/core/firebase-config.js.";
       default: return "Something went wrong. Please try again.";
@@ -245,6 +250,25 @@ var Finora = (function() {
     await auth.setPersistence(persistence);
   }
 
+  function authActionUrl(query) {
+    var path = window.location.pathname.replace(/[^/]*$/, "");
+    var url = window.location.origin + path + "login.html";
+    return query ? url + query : url;
+  }
+
+  async function sendVerificationEmail(user) {
+    if (!USE_FIREBASE || !user || user.emailVerified) return { ok: true, sent: false };
+    try {
+      await user.sendEmailVerification({
+        url: authActionUrl("?verified=1"),
+        handleCodeInApp: false,
+      });
+      return { ok: true, sent: true };
+    } catch (e) {
+      return { ok: false, sent: false, code: e.code, error: mapAuthError(e.code) };
+    }
+  }
+
   if (USE_FIREBASE) {
     var firstFired = false;
     auth.onAuthStateChanged(async function(user) {
@@ -268,9 +292,16 @@ var Finora = (function() {
     try {
       var cred = await auth.createUserWithEmailAndPassword(email, password);
       if (name) await cred.user.updateProfile({ displayName: name });
+      var verification = await sendVerificationEmail(cred.user);
       setExtras(cred.user.uid, { plan: "Free", balance: 0, currency: "USD" });
-      await auth.signOut();
-      return { ok: true };
+      currentUser = cred.user;
+      await captureToken();
+      return {
+        ok: true,
+        user: cred.user,
+        verificationEmailSent: verification.sent,
+        verificationEmailError: verification.ok ? null : verification.error,
+      };
     } catch (e) {
       return { ok: false, code: e.code, error: mapAuthError(e.code) };
     }
@@ -331,6 +362,47 @@ var Finora = (function() {
       if (e.code === "auth/user-not-found") return { ok: true };
       return { ok: false, code: e.code, error: mapAuthError(e.code) };
     }
+  }
+
+  async function sendEmailLoginLink(opts) {
+    opts = opts || {};
+    var email = opts.email;
+    var next = opts.next || "home.html";
+    if (!email) return { ok: false, code: "auth/missing-email", error: mapAuthError("auth/missing-email") };
+    if (!USE_FIREBASE) {
+      return { ok: false, code: "auth/operation-not-allowed", error: "Passwordless email login requires Firebase Authentication." };
+    }
+    try {
+      await auth.sendSignInLinkToEmail(email, {
+        url: authActionUrl("?emailLink=1" + (next ? "&next=" + encodeURIComponent(next) : "")),
+        handleCodeInApp: true,
+      });
+      localStorage.setItem(EMAIL_LINK_KEY, email);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, code: e.code, error: mapAuthError(e.code) };
+    }
+  }
+
+  function isEmailLoginLink(href) {
+    return USE_FIREBASE && auth.isSignInWithEmailLink(href || window.location.href);
+  }
+
+  async function completeEmailLoginLink(email, href) {
+    href = href || window.location.href;
+    email = email || localStorage.getItem(EMAIL_LINK_KEY);
+    if (!USE_FIREBASE) return { ok: false, code: "auth/operation-not-allowed", error: "Passwordless email login requires Firebase Authentication." };
+    if (!auth.isSignInWithEmailLink(href)) return { ok: false, code: "auth/invalid-action-code", error: mapAuthError("auth/invalid-action-code") };
+    if (!email) return { ok: false, code: "auth/missing-email", error: mapAuthError("auth/missing-email") };
+    try {
+      var cred = await auth.signInWithEmailLink(email, href);
+      localStorage.removeItem(EMAIL_LINK_KEY);
+      var extras = getExtras(cred.user.uid);
+      if (!extras.plan) setExtras(cred.user.uid, { plan: "Free", balance: 0, currency: "USD" });
+      currentUser = cred.user;
+      await captureToken();
+      return { ok: true, user: cred.user, token: idToken };
+    } catch (e) { return { ok: false, code: e.code, error: mapAuthError(e.code) }; }
   }
 
   function logout() {
@@ -701,6 +773,8 @@ var Finora = (function() {
 
   return {
     authReady: authReady, register: register, login: login, loginWithGoogle: loginWithGoogle, resetPassword: resetPassword, logout: logout,
+    sendEmailLoginLink: sendEmailLoginLink, isEmailLoginLink: isEmailLoginLink, completeEmailLoginLink: completeEmailLoginLink,
+    sendVerificationEmail: function() { return sendVerificationEmail(currentUser); },
     getProfile: getProfile, updateProfile: updateProfile, changePassword: changePassword, deleteAccount: deleteAccount,
     init: init,
     requireAuth: requireAuth, mapAuthError: mapAuthError,

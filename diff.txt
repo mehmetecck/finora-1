@@ -1,0 +1,1684 @@
+diff --git a/_footer.html b/_footer.html
+new file mode 100644
+index 0000000..c2e29f3
+--- /dev/null
++++ b/_footer.html
+@@ -0,0 +1,6 @@
++<!-- ============================ Footer ============================ -->
++<footer class="footer mt-5">
++  <div class="container text-center">
++    <span class="text-muted-2 small">© 2026 Finora.</span>
++  </div>
++</footer>
+\ No newline at end of file
+diff --git a/_header.html b/_header.html
+new file mode 100644
+index 0000000..5245a87
+--- /dev/null
++++ b/_header.html
+@@ -0,0 +1,22 @@
++<!-- ============================ Navbar ============================ -->
++<nav class="navbar navbar-expand-lg sticky-top">
++  <div class="container navbar-finora">
++    <div class="navbar-start">
++      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
++        <span class="navbar-toggler-icon"></span>
++      </button>
++      <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
++        <span class="brand-logo"><img src="assets/logos/finora.png" alt="Finora"></span> Finora
++      </a>
++    </div>
++    <div class="collapse navbar-collapse" id="nav">
++      <ul class="navbar-nav mx-auto gap-1">
++        <li class="nav-item"><a class="nav-link" href="home.html">Home</a></li>
++        <li class="nav-item"><a class="nav-link" href="market.html">Market</a></li>
++        <li class="nav-item"><a class="nav-link" href="portfolio.html">Portfolio</a></li>
++        <li class="nav-item"><a class="nav-link" href="watchlist.html">Watchlist</a></li>
++      </ul>
++    </div>
++    <div class="navbar-actions" data-nav-auth></div>
++  </div>
++</nav>
+\ No newline at end of file
+diff --git a/css/pages/home.css b/css/pages/home.css
+index 31054de..e101cd8 100644
+--- a/css/pages/home.css
++++ b/css/pages/home.css
+@@ -2,6 +2,28 @@
+    Finora — Home dashboard (home.html)
+    ===================================================================== */
+ 
++.section-title.loading {
++  position: relative;
++  color: transparent; /* Hide the original text */
++  user-select: none;
++  background: var(--bg-elevated);
++  border-radius: 8px;
++  overflow: hidden;
++}
++
++.section-title.loading::after {
++  content: "";
++  position: absolute;
++  inset: 0;
++  transform: translateX(-100%);
++  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
++  animation: shimmer 1.5s infinite;
++}
++
++@keyframes shimmer {
++  100% { transform: translateX(100%); }
++}
++
+ .dash-quick-card {
+   display: flex;
+   flex-direction: column;
+diff --git a/css/pages/landing.css b/css/pages/landing.css
+index 071be1f..b2cf4c8 100644
+--- a/css/pages/landing.css
++++ b/css/pages/landing.css
+@@ -15,14 +15,6 @@
+   gap: 0.75rem;
+ }
+ 
+-[data-landing-cta-shell][data-landing-cta-pending] [data-landing-cta] {
+-  display: none !important;
+-}
+-
+-[data-landing-cta-shell] {
+-  min-height: 3.25rem;
+-}
+-
+ .landing-cta-or {
+   font-size: 0.9rem;
+   font-weight: 500;
+diff --git a/css/pages/market.css b/css/pages/market.css
+index 6047bca..16d511c 100644
+--- a/css/pages/market.css
++++ b/css/pages/market.css
+@@ -11,6 +11,7 @@
+   padding: 0.6rem 0;
+ }
+ .ticker-track { display: inline-flex; gap: 2.5rem; animation: ticker-scroll 38s linear infinite; }
++.ticker-tape:hover .ticker-track { animation-play-state: paused; }
+ .ticker-item { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; font-weight: 500; }
+ .ticker-item .sym { color: var(--text-primary); font-weight: 700; }
+ @keyframes ticker-scroll {
+diff --git a/home.html b/home.html
+index 29a5bc0..8b7d3bc 100644
+--- a/home.html
++++ b/home.html
+@@ -3,7 +3,7 @@
+ <head>
+   <meta charset="UTF-8" />
+   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+-  <title>Finora — Home</title>
++  <title>Finora — Dashboard</title>
+ 
+   <link rel="preconnect" href="https://fonts.googleapis.com" />
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+@@ -12,36 +12,19 @@
+   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+   <link href="css/base.css" rel="stylesheet" />
++  <script src="js/core/auth-init.js"></script>
+   <link href="css/pages/home.css" rel="stylesheet" />
+ </head>
+ <body>
+ 
+-  <nav class="navbar navbar-expand-lg sticky-top">
+-    <div class="container navbar-finora">
+-      <div class="navbar-start">
+-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
+-          <span class="navbar-toggler-icon"></span>
+-        </button>
+-        <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+-          <span class="brand-logo"><img src="assets/logos/finora.png" alt="Finora"></span> Finora
+-        </a>
+-      </div>
+-      <div class="collapse navbar-collapse" id="nav">
+-        <ul class="navbar-nav mx-auto gap-1">
+-          <li class="nav-item"><a class="nav-link" href="home.html">Home</a></li>
+-          <li class="nav-item"><a class="nav-link" href="market.html">Market</a></li>
+-        </ul>
+-      </div>
+-      <div class="navbar-actions" data-nav-auth></div>
+-    </div>
+-  </nav>
++  <div id="header-placeholder"></div>
+ 
+   <main class="container py-4">
+     <header class="dashboard-header mb-4">
+       <div class="d-flex flex-wrap justify-content-between align-items-end gap-3">
+         <div>
+           <div class="eyebrow mb-1">Overview</div>
+-          <h1 class="section-title mb-1" id="dashGreeting">Welcome back</h1>
++          <h1 class="section-title mb-1 loading" id="dashGreeting">Welcome back</h1>
+           <p class="text-muted-2 mb-0" id="dashSub">Your summary at a glance.</p>
+         </div>
+         <a href="market.html" class="btn btn-brand"><i class="bi bi-search me-1"></i>Explore market</a>
+@@ -136,18 +119,15 @@
+     </div>
+   </main>
+ 
+-  <footer class="footer mt-5">
+-    <div class="container text-center">
+-      <span class="text-muted-2 small">© 2026 Finora. </span>
+-    </div>
+-  </footer>
++  <div id="footer-placeholder"></div>
+ 
+   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+   <script src="js/core/firebase-config.js"></script>
++  <script src="js/core/components.js"></script>
+   <script src="js/core/main.js"></script>
+   <script src="js/core/api.js"></script>
+   <script src="js/pages/home.js"></script>
+ </body>
+-</html>
++</html>
+\ No newline at end of file
+diff --git a/index.html b/index.html
+index dd8d2bb..4cf168e 100644
+--- a/index.html
++++ b/index.html
+@@ -13,29 +13,12 @@
+   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+   <link href="css/base.css" rel="stylesheet" />
++  <script src="js/core/auth-init.js"></script>
+   <link href="css/pages/landing.css" rel="stylesheet" />
+ </head>
+ <body>
+ 
+-  <nav class="navbar navbar-expand-lg sticky-top">
+-    <div class="container navbar-finora">
+-      <div class="navbar-start">
+-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
+-          <span class="navbar-toggler-icon"></span>
+-        </button>
+-        <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+-          <span class="brand-logo"><img src="assets/logos/finora.png" alt="Finora"></span> Finora
+-        </a>
+-      </div>
+-      <div class="collapse navbar-collapse" id="nav">
+-        <ul class="navbar-nav mx-auto gap-1">
+-          <li class="nav-item"><a class="nav-link" href="home.html">Home</a></li>
+-          <li class="nav-item"><a class="nav-link" href="market.html">Market</a></li>
+-        </ul>
+-      </div>
+-      <div class="navbar-actions" data-nav-auth></div>
+-    </div>
+-  </nav>
++  <div id="header-placeholder"></div>
+ 
+   <header class="hero">
+     <div class="container">
+@@ -49,22 +32,25 @@
+             Track thousands of stocks, build your portfolio and execute trades — all
+             from one beautifully simple dashboard built for modern investors.
+           </p>
+-          <div class="mb-4" data-landing-cta-shell data-landing-cta-pending>
+-            <div class="landing-hero-ctas" data-landing-cta="guest-actions">
+-              <a href="login.html?mode=register" class="btn btn-brand btn-lg px-4" data-landing-cta="register">
+-                Start investing <i class="bi bi-arrow-right ms-1"></i>
+-              </a>
+-              <div class="landing-cta-or text-muted-2">or</div>
+-              <a href="prosubscription.html" class="btn btn-premium btn-lg px-4" data-landing-cta="premium">
+-                Start with premium
+-              </a>
+-            </div>
+-            <div class="landing-hero-ctas d-none" data-landing-cta="signed-actions">
+-              <a href="home.html" class="btn btn-ghost btn-lg px-4" data-landing-cta="dashboard">
+-                <i class="bi bi-grid me-1"></i> Open dashboard
+-              </a>
++          <div class="landing-hero-ctas mb-4" data-landing-cta="loader">
++            <div class="spinner-border text-brand" role="status">
++              <span class="visually-hidden">Loading...</span>
+             </div>
+           </div>
++          <div class="landing-hero-ctas mb-4 d-none" data-landing-cta="guest-actions">
++            <a href="login.html?mode=register" class="btn btn-brand btn-lg px-4" data-landing-cta="register">
++              Start investing <i class="bi bi-arrow-right ms-1"></i>
++            </a>
++            <div class="landing-cta-or text-muted-2">or</div>
++            <a href="prosubscription.html" class="btn btn-premium btn-lg px-4">
++              Start with premium
++            </a>
++          </div>
++          <div class="landing-hero-ctas mb-4 d-none" data-landing-cta="signed-actions">
++            <a href="home.html" class="btn btn-brand btn-lg px-4">
++              <i class="bi bi-grid me-1"></i> Go to dashboard
++            </a>
++          </div>
+           <div class="row g-3 mx-auto" style="max-width: 520px;">
+             <div class="col-4"><div class="stat-pill"><div class="num text-brand">2.4M+</div><div class="text-muted-2 small">Active traders</div></div></div>
+             <div class="col-4"><div class="stat-pill"><div class="num text-accent">8,500+</div><div class="text-muted-2 small">Listed stocks</div></div></div>
+@@ -129,34 +115,14 @@
+     </div>
+   </section>
+ 
+-  <footer class="footer">
+-    <div class="container">
+-      <div class="row g-4">
+-        <div class="col-lg-4">
+-          <a class="navbar-brand d-flex align-items-center gap-2 mb-2" href="index.html">
+-            <span class="brand-logo"><img src="assets/logos/finora.png" alt="Finora"></span> Finora
+-          </a>
+-          <p class="text-muted-2" style="max-width:300px">Invest smarter, trade with confidence. The modern home for your portfolio.</p>
+-          <div class="d-flex gap-3 fs-5">
+-            <a href="#"><i class="bi bi-github"></i></a>
+-          </div>
+-        </div>
+-        <div class="col-6 col-lg-2"><h6 class="text-white mb-3">Product</h6><ul class="list-unstyled d-grid gap-2"><li><a href="#">Markets</a></li><li><a href="#features">Features</a></li><li><a href="prosubscription.html">Pricing</a></li></ul></div>
+-        <div class="col-6 col-lg-2"><h6 class="text-white mb-3">Company</h6><ul class="list-unstyled d-grid gap-2"><li><a href="#">About</a></li><li><a href="#">Careers</a></li><li><a href="#">Blog</a></li><li><a href="#">Press</a></li></ul></div>
+-        <div class="col-6 col-lg-2"><h6 class="text-white mb-3">Resources</h6><ul class="list-unstyled d-grid gap-2"><li><a href="#">Help center</a></li><li><a href="#">API docs</a></li><li><a href="#">Status</a></li><li><a href="#">Community</a></li></ul></div>
+-        <div class="col-6 col-lg-2"><h6 class="text-white mb-3">Legal</h6><ul class="list-unstyled d-grid gap-2"><li><a href="#">Privacy</a></li><li><a href="#">Terms</a></li><li><a href="#">Security</a></li><li><a href="#">Disclosures</a></li></ul></div>
+-      </div>
+-      <hr class="divider-line my-4" />
+-      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+-        <span class="text-muted-2 small">© 2026 Finora.</span>
+-      </div>
+-    </div>
+-  </footer>
++  <div id="footer-placeholder"></div>
+ 
+   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+   <script src="js/core/firebase-config.js"></script>
++  <script src="js/core/components.js"></script>
+   <script src="js/core/main.js"></script>
++  <script src="js/pages/landing.js"></script>
+ </body>
+ </html>
+diff --git a/js/core/auth-init.js b/js/core/auth-init.js
+new file mode 100644
+index 0000000..ac2e2a5
+--- /dev/null
++++ b/js/core/auth-init.js
+@@ -0,0 +1,14 @@
++/**
++ * Finora - Synchronous Auth State Initializer
++ *
++ * This script runs in the <head> of every page *before* the DOM is built.
++ * It checks for a session flag in localStorage and applies a class to the
++ * <html> element if the user is likely logged in. This allows CSS to
++ * immediately show the correct UI state and prevent content flicker
++ * (e.g., showing "Login" before it changes to "My Profile").
++ *
++ * The full async Firebase check in main.js will still run to verify the session.
++ */
++if (localStorage.getItem("finora_session_active") === "true") {
++  document.documentElement.classList.add("auth-active");
++}
+\ No newline at end of file
+diff --git a/js/core/components.js b/js/core/components.js
+new file mode 100644
+index 0000000..97c9d72
+--- /dev/null
++++ b/js/core/components.js
+@@ -0,0 +1,39 @@
++/* =====================================================================
++   Finora — HTML Component Loader
++   Fetches and injects reusable HTML partials like the header and footer.
++   ===================================================================== */
++
++const FinoraComponents = (function() {
++  async function loadComponent(url, placeholderId) {
++    const placeholder = document.getElementById(placeholderId);
++    if (!placeholder) return;
++
++    try {
++      const response = await fetch(url);
++      if (!response.ok) throw new Error(`Failed to load ${url}`);
++      const content = await response.text();
++      placeholder.outerHTML = content;
++    } catch (error) {
++      console.error(`Error loading component for ${placeholderId}:`, error);
++      placeholder.innerHTML = `<p class="text-center text-bear small">Error loading component: ${url}</p>`;
++    }
++  }
++
++  async function loadAll() {
++    await Promise.all([
++      loadComponent("_header.html", "header-placeholder"),
++      loadComponent("_footer.html", "footer-placeholder"),
++    ]);
++  }
++
++  // This now becomes the main entry point for the application on page load.
++  // It ensures components are loaded *before* any other logic runs.
++  document.addEventListener("DOMContentLoaded", async () => {
++    await loadAll();
++    if (window.Finora && typeof window.Finora.init === "function") {
++      window.Finora.init();
++    }
++  });
++
++  return { loadAll };
++})();
+\ No newline at end of file
+diff --git a/js/core/main.js b/js/core/main.js
+index 6c7af95..1f12242 100644
+--- a/js/core/main.js
++++ b/js/core/main.js
+@@ -20,7 +20,6 @@ var Finora = (function() {
+   var EXTRAS_KEY = "finora_profile_extras";
+   var LOCAL_USERS = "finora_local_users";
+   var LOCAL_SESSION = "finora_local_session";
+-  var EMAIL_LINK_KEY = "finora_email_link_signin";
+ 
+   /* --------------------- Profile extras (local) -------------------- */
+   function allExtras() { return JSON.parse(localStorage.getItem(EXTRAS_KEY) || "{}"); }
+@@ -101,10 +100,6 @@ var Finora = (function() {
+       case "auth/account-exists-with-different-credential": return "An account already exists with this email. Try logging in with your password.";
+       case "auth/operation-not-allowed": return "This sign-in method isn't enabled for this Firebase project.";
+       case "auth/unauthorized-domain": return "This domain is not authorized in Firebase Authentication settings.";
+-      case "auth/invalid-continue-uri": return "The confirmation email redirect URL is not valid.";
+-      case "auth/missing-continue-uri": return "The confirmation email redirect URL is missing.";
+-      case "auth/invalid-action-code": return "This email login link is invalid or has already been used.";
+-      case "auth/expired-action-code": return "This email login link has expired. Request a new one.";
+       case "auth/invalid-api-key":
+       case "auth/configuration-not-found": return "Firebase is not configured yet. Add your config in js/core/firebase-config.js.";
+       default: return "Something went wrong. Please try again.";
+@@ -154,6 +149,7 @@ var Finora = (function() {
+         plan: "Free", balance: 0, currency: "USD", joined: new Date().toISOString(),
+       });
+       saveUsers(users);
++      // Match Firebase flow: do NOT auto sign-in; user logs in next.
+       return { ok: true };
+     }
+ 
+@@ -249,34 +245,6 @@ var Finora = (function() {
+     await auth.setPersistence(persistence);
+   }
+ 
+-  function authActionUrl(query) {
+-    var path = window.location.pathname.replace(/[^/]*$/, "");
+-    var url = window.location.origin + path + "login.html";
+-    return query ? url + query : url;
+-  }
+-
+-  async function sendVerificationEmail(user) {
+-    if (!USE_FIREBASE || !user || user.emailVerified) return { ok: true, sent: false };
+-    try {
+-      await user.sendEmailVerification({
+-        url: authActionUrl("?verified=1"),
+-        handleCodeInApp: false,
+-      });
+-      return { ok: true, sent: true };
+-    } catch (e) {
+-      return { ok: false, sent: false, code: e.code, error: mapAuthError(e.code) };
+-    }
+-  }
+-
+-  function emailLinkActionSettings(next) {
+-    var query = "?emailLink=1";
+-    if (next) query += "&next=" + encodeURIComponent(next);
+-    return {
+-      url: authActionUrl(query),
+-      handleCodeInApp: true,
+-    };
+-  }
+-
+   if (USE_FIREBASE) {
+     var firstFired = false;
+     auth.onAuthStateChanged(async function(user) {
+@@ -284,7 +252,6 @@ var Finora = (function() {
+       await captureToken(); // start the session: grab the token for this user
+       if (!firstFired) { firstFired = true; resolveReady(user); }
+       renderNavAuth();
+-      renderLandingCtas();
+     });
+   } else {
+     currentUser = Local.current();
+@@ -297,29 +264,13 @@ var Finora = (function() {
+     var name = opts.name;
+     var email = opts.email;
+     var password = opts.password;
+-    if (!USE_FIREBASE) {
+-      var res = Local.register({ name: name, email: email, password: password });
+-      if (!res.ok) return res;
+-      var loginRes = Local.login({ email: email, password: password, remember: true });
+-      if (loginRes.ok) {
+-        currentUser = loginRes.user;
+-        await captureToken();
+-      }
+-      return { ok: true };
+-    }
++    if (!USE_FIREBASE) return Local.register({ name: name, email: email, password: password });
+     try {
+       var cred = await auth.createUserWithEmailAndPassword(email, password);
+       if (name) await cred.user.updateProfile({ displayName: name });
+-      var verification = await sendVerificationEmail(cred.user);
+       setExtras(cred.user.uid, { plan: "Free", balance: 0, currency: "USD" });
+-      currentUser = cred.user;
+-      await captureToken();
+-      return {
+-        ok: true,
+-        user: cred.user,
+-        verificationEmailSent: verification.sent,
+-        verificationEmailError: verification.ok ? null : verification.error,
+-      };
++      await auth.signOut();
++      return { ok: true };
+     } catch (e) {
+       return { ok: false, code: e.code, error: mapAuthError(e.code) };
+     }
+@@ -337,6 +288,7 @@ var Finora = (function() {
+     try {
+       await setAuthPersistence(remember);
+       var cred = await auth.signInWithEmailAndPassword(email, password);
++      localStorage.setItem("finora_session_active", "true");
+       currentUser = cred.user;
+       await captureToken(); // capture the auth token & start the session
+       return { ok: true, user: cred.user, token: idToken };
+@@ -358,6 +310,7 @@ var Finora = (function() {
+       var provider = new firebase.auth.GoogleAuthProvider();
+       provider.setCustomParameters({ prompt: "select_account" });
+       var cred = await auth.signInWithPopup(provider);
++      localStorage.setItem("finora_session_active", "true");
+       var extras = getExtras(cred.user.uid);
+       if (!extras.plan) setExtras(cred.user.uid, { plan: "Free", balance: 0, currency: "USD" });
+       currentUser = cred.user;
+@@ -380,53 +333,10 @@ var Finora = (function() {
+     }
+   }
+ 
+-  async function sendEmailLoginLink(opts) {
+-    opts = opts || {};
+-    var email = opts.email;
+-    var next = opts.next || "home.html";
+-    if (!email) return { ok: false, code: "auth/missing-email", error: mapAuthError("auth/missing-email") };
+-    if (!USE_FIREBASE) {
+-      return { ok: false, code: "auth/operation-not-allowed", error: "Passwordless email login requires Firebase Authentication." };
+-    }
+-    try {
+-      await auth.sendSignInLinkToEmail(email, emailLinkActionSettings(next));
+-      localStorage.setItem(EMAIL_LINK_KEY, email);
+-      return { ok: true };
+-    } catch (e) {
+-      return { ok: false, code: e.code, error: mapAuthError(e.code) };
+-    }
+-  }
+-
+-  function isEmailLoginLink(href) {
+-    return USE_FIREBASE && auth.isSignInWithEmailLink(href || window.location.href);
+-  }
+-
+-  async function completeEmailLoginLink(email, href) {
+-    href = href || window.location.href;
+-    email = email || localStorage.getItem(EMAIL_LINK_KEY);
+-    if (!USE_FIREBASE) {
+-      return { ok: false, code: "auth/operation-not-allowed", error: "Passwordless email login requires Firebase Authentication." };
+-    }
+-    if (!auth.isSignInWithEmailLink(href)) {
+-      return { ok: false, code: "auth/invalid-action-code", error: mapAuthError("auth/invalid-action-code") };
+-    }
+-    if (!email) return { ok: false, code: "auth/missing-email", error: mapAuthError("auth/missing-email") };
+-    try {
+-      var cred = await auth.signInWithEmailLink(email, href);
+-      localStorage.removeItem(EMAIL_LINK_KEY);
+-      var extras = getExtras(cred.user.uid);
+-      if (!extras.plan) setExtras(cred.user.uid, { plan: "Free", balance: 0, currency: "USD" });
+-      currentUser = cred.user;
+-      await captureToken();
+-      return { ok: true, user: cred.user, token: idToken };
+-    } catch (e) {
+-      return { ok: false, code: e.code, error: mapAuthError(e.code) };
+-    }
+-  }
+-
+   function logout() {
+     function go() { window.location.href = "index.html"; }
+     idToken = null; // end the session
++    localStorage.removeItem("finora_session_active");
+     if (!USE_FIREBASE) { Local.clearSession(); currentUser = null; go(); return; }
+     auth.signOut().finally(go);
+   }
+@@ -668,9 +578,9 @@ var Finora = (function() {
+       : ' class="nav-user-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu"';
+     var menu = pending ? "" : `
+             <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark border-finora">
+-              <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person me-2"></i>My Profile</a></li>
+-              <li><a class="dropdown-item" href="portfolio.html"><i class="bi bi-briefcase me-2"></i>My Portfolio</a></li>
+-              <li><a class="dropdown-item" href="watchlist.html"><i class="bi bi-star me-2"></i>My Watchlist</a></li>
++              <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person-circle me-2"></i>My Profile</a></li>
++              <li><hr class="dropdown-divider border-finora"></li>
++              <li><button class="dropdown-item" type="button" data-logout-btn><i class="bi bi-box-arrow-right me-2"></i>Log out</button></li>
+             </ul>`;
+     return `<div class="d-flex align-items-center gap-3${pendingCls}">
+           <div class="dropdown">
+@@ -682,25 +592,24 @@ var Finora = (function() {
+         </div>`;
+   }
+ 
++  function bindLogout(slot) {
++    const btn = slot.querySelector("[data-logout-btn]");
++    if (btn) {
++      btn.addEventListener("click", logout);
++      return true;
++    }
++    return false;
++  }
++
+   function isMinimalNavPage() {
+     var slot = document.querySelector("[data-nav-auth]");
+     return !!(slot && slot.hasAttribute("data-nav-minimal"));
+   }
+ 
+-  function setGuestNavbarHidden(hidden) {
+-    var nav = document.querySelector(".navbar-nav");
+-    var toggler = document.querySelector(".navbar .navbar-toggler");
+-    var actions = document.querySelector(".navbar-actions");
+-    if (nav) nav.classList.toggle("d-none", hidden);
+-    if (toggler) toggler.classList.toggle("d-none", hidden);
+-    if (actions) actions.classList.toggle("d-none", hidden);
+-  }
+-
+   function renderNavAuthPending() {
+     var slot = document.querySelector("[data-nav-auth]");
+     if (!slot || slot.dataset.navAuthState === "ready") return;
+-    slot.innerHTML = "";
+-    setGuestNavbarHidden(true);
++    slot.innerHTML = signedInNavMarkup(true, { hidePremium: isMinimalNavPage() });
+     slot.dataset.navAuthState = "pending";
+   }
+ 
+@@ -711,11 +620,23 @@ var Finora = (function() {
+     var profile = getProfile();
+ 
+     if (profile) {
+-      setGuestNavbarHidden(false);
+       slot.innerHTML = signedInNavMarkup(false, { hidePremium: minimal });
++      bindLogout(slot);
++    } else if (minimal) {
++      slot.innerHTML = `
++        <div class="d-flex align-items-center gap-3">
++          <a href="login.html" class="nav-user-btn" aria-label="Log in">
++            <i class="bi bi-person-fill" aria-hidden="true"></i>
++          </a>
++        </div>`;
+     } else {
+-      setGuestNavbarHidden(true);
+-      slot.innerHTML = "";
++      slot.innerHTML = `
++        <div class="d-flex align-items-center gap-3">
++          <a href="login.html?mode=register" class="nav-user-btn" aria-label="Create account">
++            <i class="bi bi-person-fill" aria-hidden="true"></i>
++          </a>
++          ${navPremiumMarkup()}
++        </div>`;
+     }
+     slot.dataset.navAuthState = "ready";
+     renderLandingCtas();
+@@ -747,27 +668,29 @@ var Finora = (function() {
+       window.location.href = "index.html";
+       return false;
+     }
++    if (!user && (path === "index.html" || path === "")) {
++      var nav = document.querySelector(".navbar-nav");
++      if (nav) nav.classList.add("d-none");
++    }
+     return true;
+   }
+ 
+   function renderLandingCtas() {
+     var path = currentPath();
+     if (path !== "index.html" && path !== "") return;
+-    var shell = document.querySelector("[data-landing-cta-shell]");
+     var guestActions = document.querySelector("[data-landing-cta=\"guest-actions\"]");
+     var signedActions = document.querySelector("[data-landing-cta=\"signed-actions\"]");
+     if (!guestActions || !signedActions) return;
+     var signedIn = !!getProfile();
+     guestActions.classList.toggle("d-none", signedIn);
+     signedActions.classList.toggle("d-none", !signedIn);
+-    if (shell) shell.removeAttribute("data-landing-cta-pending");
+   }
+ 
+   async function init() {
+-    renderNavAuthPending();
++    renderNavAuthPending(); // Then show pending state
+     var allowed = await guardRoutes();
+     if (!allowed) return;
+-    renderNavAuth();
++    renderNavAuth(); // Then render final auth state
+     renderLandingCtas();
+     bindDropdownLinks();
+     var path = currentPath();
+@@ -776,13 +699,10 @@ var Finora = (function() {
+     });
+   }
+ 
+-  document.addEventListener("DOMContentLoaded", init);
+-
+   return {
+     authReady: authReady, register: register, login: login, loginWithGoogle: loginWithGoogle, resetPassword: resetPassword, logout: logout,
+-    sendEmailLoginLink: sendEmailLoginLink, isEmailLoginLink: isEmailLoginLink, completeEmailLoginLink: completeEmailLoginLink,
+-    sendVerificationEmail: function() { return sendVerificationEmail(currentUser); },
+     getProfile: getProfile, updateProfile: updateProfile, changePassword: changePassword, deleteAccount: deleteAccount,
++    init: init,
+     requireAuth: requireAuth, mapAuthError: mapAuthError,
+     getWatchlist: getWatchlist, removeFromWatchlist: removeFromWatchlist,
+     isInWatchlist: isInWatchlist, toggleWatchlist: toggleWatchlist,
+diff --git a/js/pages/home.js b/js/pages/home.js
+index cea9c90..82cb9b5 100644
+--- a/js/pages/home.js
++++ b/js/pages/home.js
+@@ -1,58 +1,83 @@
+ /* =====================================================================
+    Finora — Home dashboard logic
++   Pulls live data from FinoraAPI. Renders empty states until the market
++   data API is configured (js/core/api.js).
+    ===================================================================== */
+ 
+ document.addEventListener("DOMContentLoaded", async function() {
+-  var user = await Finora.requireAuth();
+-  if (!user) return;
+-  var profile = Finora.getProfile();
++  // First, ensure the user is authenticated. If not, they will be redirected.
++  const fbUser = await Finora.requireAuth();
++  if (!fbUser) return;
++
++  // Get the normalized user profile, which contains name, plan, etc.
++  const profile = Finora.getProfile();
+ 
+   renderGreeting(profile);
+   renderWatchlistStats(profile);
+-  loadPortfolioStat(user);
++  loadPortfolioStat(profile);
+   loadTrendingPreview();
+   loadWatchlistPreview(profile);
+   loadIndicesPreview();
+ 
++  /**
++   * Personalizes the dashboard greeting with the user's first name.
++   */
+   function renderGreeting(profile) {
+-    var greetingEl = document.getElementById("dashGreeting");
+-    var subEl = document.getElementById("dashSub");
+-    var firstName = profile.name ? profile.name.split(" ")[0] : "there";
+-    greetingEl.textContent = "Welcome back, " + firstName;
+-    subEl.textContent = "Here is your Finora summary for today.";
++    const greetingEl = document.getElementById("dashGreeting");
++    const subEl = document.getElementById("dashSub");
++    if (greetingEl && subEl && profile) {
++      const firstName = profile.name ? profile.name.split(" ")[0] : "there";
++      greetingEl.textContent = `Welcome back, ${firstName}`;
++      subEl.textContent = "Here is your Finora summary for today.";
++      greetingEl.classList.remove("loading");
++    }
+   }
+ 
++  /**
++   * Updates the "Watchlist" stat card with the number of saved symbols.
++   */
+   function renderWatchlistStats(profile) {
+-    var count = Finora.getWatchlist(profile.uid).length;
+-    document.getElementById("statWatchlist").textContent = String(count);
++    if (profile) {
++      const count = Finora.getWatchlist(profile.uid).length;
++      document.getElementById("statWatchlist").textContent = String(count);
++    }
+   }
+ 
+-  async function loadPortfolioStat(user) {
+-    var valueEl = document.getElementById("statPortfolio");
+-    var subEl = document.getElementById("statPortfolioSub");
++  /**
++   * Fetches portfolio data to populate the "Portfolio value" stat card.
++   * Note: This is a placeholder as the API currently returns empty data.
++   */
++  async function loadPortfolioStat(profile) {
++    const valueEl = document.getElementById("statPortfolio");
++    const subEl = document.getElementById("statPortfolioSub");
+     try {
+-      var portfolio = await FinoraAPI.getPortfolio(user.uid);
+-      var holdings = portfolio.holdings || [];
+-      var cash = portfolio.cash || 0;
+-      var value = holdings.reduce(function(sum, h) { return sum + h.shares * h.price; }, 0) + cash;
++      const portfolio = await FinoraAPI.getPortfolio(profile.uid);
++      const holdings = portfolio.holdings || [];
++      const cash = portfolio.cash || 0;
++      const value = holdings.reduce((sum, h) => sum + h.shares * h.price, 0) + cash;
+       valueEl.textContent = Finora.fmtMoney(value);
+-      subEl.textContent = holdings.length ? holdings.length + " holdings" : "No holdings yet";
++      subEl.textContent = holdings.length ? `${holdings.length} holdings` : "No holdings yet";
+     } catch (err) {
+       valueEl.textContent = Finora.fmtMoney(0);
+       subEl.textContent = "No holdings yet";
+     }
+   }
+ 
++  /**
++   * Fetches trending stocks and populates the "Market snapshot" card.
++   */
+   async function loadTrendingPreview() {
+-    var wrap = document.getElementById("dashTrending");
+-    var statEl = document.getElementById("statTrending");
++    const wrap = document.getElementById("dashTrending");
++    const statEl = document.getElementById("statTrending");
+     try {
+-      var stocks = await FinoraAPI.getTrending();
++      const stocks = await FinoraAPI.getTrending();
+       if (!stocks.length) throw new Error("empty");
+       statEl.textContent = String(stocks.length);
+-      wrap.innerHTML = stocks.slice(0, 5).map(function(s) {
+-        var up = (s.change || 0) >= 0;
+-        return `<a href="market.html?symbol=${s.symbol}" class="dash-list-item">
++      wrap.innerHTML = stocks
++        .slice(0, 5)
++        .map((s) => {
++          const up = (s.change || 0) >= 0;
++          return `<a href="market.html?symbol=${s.symbol}" class="dash-list-item">
+             ${Finora.tickerAvatar(s.symbol, { size: "sm", color: s.color })}
+             <span class="flex-grow-1 min-w-0">
+               <span class="d-block fw-semibold text-white text-truncate">${s.symbol}</span>
+@@ -63,16 +88,20 @@ document.addEventListener("DOMContentLoaded", async function() {
+               <span class="d-block small ${up ? "text-bull" : "text-bear"}">${s.change != null ? (up ? "+" : "") + s.change.toFixed(2) + "%" : "—"}</span>
+             </span>
+           </a>`;
+-      }).join("");
++        })
++        .join("");
+     } catch (err) {
+       statEl.textContent = "—";
+       wrap.innerHTML = Finora.emptyState(Finora.API_UNAVAILABLE_MSG, "bi-graph-up");
+     }
+   }
+ 
++  /**
++   * Fetches quotes for the user's watchlist and populates the "Your watchlist" card.
++   */
+   async function loadWatchlistPreview(profile) {
+-    var wrap = document.getElementById("dashWatchlist");
+-    var items = Finora.getWatchlist(profile.uid);
++    const wrap = document.getElementById("dashWatchlist");
++    const items = Finora.getWatchlist(profile.uid);
+     if (!items.length) {
+       wrap.innerHTML = `<div class="text-center text-muted-2 py-4">
+           <i class="bi bi-star d-block mb-2" style="font-size:1.6rem;opacity:.55"></i>
+@@ -83,30 +112,21 @@ document.addEventListener("DOMContentLoaded", async function() {
+     }
+ 
+     wrap.innerHTML = `<div class="text-muted-2 small py-3">Loading watchlist…</div>`;
+-    var rows = [];
+-    var slice = items.slice(0, 5);
+-    for (var i = 0; i < slice.length; i++) {
+-      var item = slice[i];
+-      var symbol = typeof item === "string" ? item : item.symbol;
+-      var name = typeof item === "string" ? symbol : (item.name || symbol);
+-      var quote = null;
++    const quotePromises = items.slice(0, 5).map(async (item) => {
++      const symbol = typeof item === "string" ? item : item.symbol;
+       try {
+-        quote = await FinoraAPI.getStock(symbol);
+-      } catch (err) {
+-        quote = null;
++        return await FinoraAPI.getStock(symbol);
++      } catch {
++        return { symbol, name: item.name || symbol, price: null, change: null };
+       }
+-      rows.push({
+-        symbol: symbol,
+-        name: quote && quote.name ? quote.name : name,
+-        price: quote ? quote.price : null,
+-        change: quote ? quote.change : null,
+-      });
+-    }
++    });
++    const rows = await Promise.all(quotePromises);
+ 
+-    wrap.innerHTML = rows.map(function(s) {
+-      var up = (s.change || 0) >= 0;
+-      var hasChange = s.change != null && Number.isFinite(s.change);
+-      return `<a href="watchlist.html?symbol=${encodeURIComponent(s.symbol)}" class="dash-list-item">
++    wrap.innerHTML = rows
++      .map((s) => {
++        const up = (s.change || 0) >= 0;
++        const hasChange = s.change != null && Number.isFinite(s.change);
++        return `<a href="watchlist.html?symbol=${encodeURIComponent(s.symbol)}" class="dash-list-item">
+           ${Finora.tickerAvatar(s.symbol, { size: "sm" })}
+           <span class="flex-grow-1 min-w-0">
+             <span class="d-block fw-semibold text-white text-truncate">${s.symbol}</span>
+@@ -117,22 +137,27 @@ document.addEventListener("DOMContentLoaded", async function() {
+             <span class="d-block small ${hasChange ? (up ? "text-bull" : "text-bear") : "text-muted-2"}">${hasChange ? (up ? "+" : "") + s.change.toFixed(2) + "%" : "—"}</span>
+           </span>
+         </a>`;
+-    }).join("");
++      })
++      .join("");
+   }
+ 
++  /**
++   * Fetches major market indices and populates the "Major indices" section.
++   */
+   async function loadIndicesPreview() {
+-    var row = document.getElementById("dashIndices");
+-    var statEl = document.getElementById("statIndices");
+-    var subEl = document.getElementById("statIndicesSub");
++    const row = document.getElementById("dashIndices");
++    const statEl = document.getElementById("statIndices");
++    const subEl = document.getElementById("statIndicesSub");
+     try {
+-      var indices = await FinoraAPI.getIndices();
++      const indices = await FinoraAPI.getIndices();
+       if (!indices.length) throw new Error("empty");
+       statEl.textContent = String(indices.length);
+-      var avg = indices.reduce(function(sum, idx) { return sum + (idx.change || 0); }, 0) / indices.length;
+-      subEl.textContent = (avg >= 0 ? "+" : "") + avg.toFixed(2) + "% avg today";
+-      row.innerHTML = indices.map(function(idx) {
+-        var up = (idx.change || 0) >= 0;
+-        return `<div class="col-6 col-lg-3">
++      const avg = indices.reduce((sum, idx) => sum + (idx.change || 0), 0) / indices.length;
++      subEl.textContent = `${avg >= 0 ? "+" : ""}${avg.toFixed(2)}% avg today`;
++      row.innerHTML = indices
++        .map((idx) => {
++          const up = (idx.change || 0) >= 0;
++          return `<div class="col-6 col-lg-3">
+             <div class="dash-index-card">
+               <div class="text-muted-2 small fw-semibold mb-1">${idx.name}</div>
+               <div class="fs-5 fw-bold mb-1">${idx.value != null ? Finora.fmtNumber(idx.value) : "—"}</div>
+@@ -141,7 +166,8 @@ document.addEventListener("DOMContentLoaded", async function() {
+               </span>
+             </div>
+           </div>`;
+-      }).join("");
++        })
++        .join("");
+     } catch (err) {
+       statEl.textContent = "—";
+       subEl.textContent = "Unavailable";
+diff --git a/js/pages/landing.js b/js/pages/landing.js
+new file mode 100644
+index 0000000..8f7daaf
+--- /dev/null
++++ b/js/pages/landing.js
+@@ -0,0 +1,18 @@
++/* =====================================================================
++   Finora — Landing page logic
++   Toggles hero CTAs based on auth state to prevent flicker.
++   ===================================================================== */
++
++document.addEventListener("DOMContentLoaded", () => {
++  const guestActions = document.querySelector('[data-landing-cta="guest-actions"]');
++  const loader = document.querySelector('[data-landing-cta="loader"]');
++  const signedActions = document.querySelector('[data-landing-cta="signed-actions"]');
++
++  Finora.authReady.then((user) => {
++    const target = user ? signedActions : guestActions;
++    if (loader) loader.classList.add("d-none");
++    if (target) {
++      target.classList.remove("d-none");
++    }
++  });
++});
+\ No newline at end of file
+diff --git a/js/pages/login.js b/js/pages/login.js
+index 9893810..49e594c 100644
+--- a/js/pages/login.js
++++ b/js/pages/login.js
+@@ -7,25 +7,6 @@ document.addEventListener("DOMContentLoaded", async function() {
+   var requestedNext = params.get("next") || "home.html";
+   var next = /^(https?:)?\/\//i.test(requestedNext) ? "home.html" : requestedNext;
+ 
+-  if (Finora.isEmailLoginLink(window.location.href)) {
+-    var emailLinkResult = await Finora.completeEmailLoginLink(null, window.location.href);
+-    if (!emailLinkResult.ok && emailLinkResult.code === "auth/missing-email") {
+-      var emailForLink = window.prompt("Please confirm the email address you used for this login link:");
+-      if (emailForLink) {
+-        emailLinkResult = await Finora.completeEmailLoginLink(emailForLink.trim(), window.location.href);
+-      }
+-    }
+-
+-    if (emailLinkResult.ok) {
+-      Finora.toast("Signed in with email link.", "success");
+-      setTimeout(function() { window.location.href = next; }, 700);
+-      return;
+-    }
+-
+-    Finora.toast(emailLinkResult.error, "error");
+-    window.history.replaceState({}, document.title, "login.html");
+-  }
+-
+   // If already logged in, go straight to profile.
+   var existing = await Finora.authReady;
+   if (existing) {
+@@ -77,11 +58,6 @@ document.addEventListener("DOMContentLoaded", async function() {
+     Finora.toast("Account created! Please log in to continue.", "success");
+   }
+ 
+-  if (params.get("verified") === "1") {
+-    setMode("login");
+-    Finora.toast("Email confirmed. You can log in now.", "success");
+-  }
+-
+   /* ----------------------- Show / hide password ------------------- */
+   document.querySelectorAll("[data-toggle-pw]").forEach(function(btn) {
+     btn.addEventListener("click", function() {
+@@ -93,41 +69,12 @@ document.addEventListener("DOMContentLoaded", async function() {
+     });
+   });
+ 
+-  /* ------------------------- Validation helpers ------------------- */
+-  var MIN_PASSWORD = 6; // Firebase requires at least 6 characters.
+-  function isEmail(v) { return v.includes("@") && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+-
+-  function clearFieldError(input) {
+-    input.classList.remove("is-invalid");
+-    var container = input.closest(".mb-3, .mb-2");
+-    if (!container) return;
+-    container.querySelectorAll(".invalid-feedback").forEach(function(f) { f.remove(); });
+-  }
+-
+-  function fieldError(input, msg) {
+-    input.classList.add("is-invalid");
+-    var container = input.closest(".mb-3, .mb-2");
+-    var fb = container ? container.querySelector(".invalid-feedback") : null;
+-    if (!fb) {
+-      fb = document.createElement("div");
+-      fb.className = "invalid-feedback d-block";
+-      (input.closest(".input-group") || input).insertAdjacentElement("afterend", fb);
+-    }
+-    fb.textContent = msg;
+-  }
+-  function clearErrors(form) {
+-    form.querySelectorAll(".is-invalid").forEach(function(i) { i.classList.remove("is-invalid"); });
+-    form.querySelectorAll(".invalid-feedback").forEach(function(f) { f.remove(); });
+-    if (form === registerForm && matchHint) matchHint.textContent = "";
+-  }
+-
+   /* ---------------------- Password strength meter ------------------ */
+   var pwInput = registerForm.querySelector('[name="password"]');
+   var meter = document.getElementById("pwMeter");
+   var hint = document.getElementById("pwHint");
+   pwInput.addEventListener("input", function() {
+     var v = pwInput.value;
+-    if (v.length >= MIN_PASSWORD) clearFieldError(pwInput);
+     var score = 0;
+     if (v.length >= 8) score++;
+     if (/[A-Z]/.test(v)) score++;
+@@ -171,22 +118,29 @@ document.addEventListener("DOMContentLoaded", async function() {
+     confirmInput.classList.toggle("is-invalid", !ok);
+     return ok;
+   }
+-  confirmInput.addEventListener("input", function() {
+-    if (confirmInput.value) clearFieldError(confirmInput);
+-    checkMatch();
+-  });
++  confirmInput.addEventListener("input", checkMatch);
+ 
+-  function bindLiveValidation(input, isValid) {
+-    input.addEventListener("input", function() {
+-      if (isValid(input.value.trim())) clearFieldError(input);
+-    });
+-  }
++  /* ------------------------- Validation helpers ------------------- */
++  // Basic email check: must contain "@" with text on both sides and a domain.
++  function isEmail(v) { return v.includes("@") && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
++  var MIN_PASSWORD = 6; // Firebase requires at least 6 characters.
+ 
+-  bindLiveValidation(loginForm.email, isEmail);
+-  bindLiveValidation(registerForm.email, isEmail);
+-  registerForm.name.addEventListener("input", function() {
+-    if (registerForm.name.value.trim().length >= 2) clearFieldError(registerForm.name);
+-  });
++  function fieldError(input, msg) {
++    input.classList.add("is-invalid");
++    var container = input.closest(".mb-3, .mb-2");
++    var fb = container ? container.querySelector(".invalid-feedback") : null;
++    if (!fb) {
++      fb = document.createElement("div");
++      fb.className = "invalid-feedback d-block";
++      (input.closest(".input-group") || input).insertAdjacentElement("afterend", fb);
++    }
++    fb.textContent = msg;
++  }
++  function clearErrors(form) {
++    form.querySelectorAll(".is-invalid").forEach(function(i) { i.classList.remove("is-invalid"); });
++    form.querySelectorAll(".invalid-feedback").forEach(function(f) { f.remove(); });
++    if (form === registerForm && matchHint) matchHint.textContent = "";
++  }
+ 
+   /* ------------------------- Submit helpers ----------------------- */
+   function setLoading(btn, isLoading, loadingText) {
+@@ -237,28 +191,6 @@ document.addEventListener("DOMContentLoaded", async function() {
+     });
+   }
+ 
+-  var emailLinkBtn = document.querySelector("[data-email-link-login]");
+-  if (emailLinkBtn) {
+-    emailLinkBtn.addEventListener("click", async function() {
+-      clearErrors(loginForm);
+-      var email = loginForm.email.value.trim();
+-      if (!isEmail(email)) {
+-        fieldError(loginForm.email, "Enter a valid email address so we can send your login link.");
+-        return;
+-      }
+-
+-      setLoading(emailLinkBtn, true, "Sending link...");
+-      var res = await Finora.sendEmailLoginLink({ email: email, next: next });
+-      setLoading(emailLinkBtn, false);
+-      if (!res.ok) {
+-        fieldError(loginForm.email, res.error);
+-        Finora.toast(res.error, "error");
+-        return;
+-      }
+-      Finora.toast("Login link sent. Check your inbox.", "success");
+-    });
+-  }
+-
+   /* ----------------------------- Login ---------------------------- */
+   loginForm.addEventListener("submit", async function(e) {
+     e.preventDefault();
+@@ -326,14 +258,9 @@ document.addEventListener("DOMContentLoaded", async function() {
+       Finora.toast(res.error, "error");
+       return;
+     }
+-    if (res.verificationEmailSent) {
+-      Finora.toast("Account created. Check your inbox to confirm your email.", "success");
+-    } else if (res.verificationEmailError) {
+-      Finora.toast("Account created, but the confirmation email could not be sent: " + res.verificationEmailError, "error");
+-    } else {
+-      Finora.toast("Account created! Welcome to Finora.", "success");
+-    }
+-    setTimeout(function() { window.location.href = "home.html"; }, 1200);
++    // Redirect to the Login page upon successful account creation.
++    Finora.toast("Account created! Redirecting to login…", "success");
++    setTimeout(function() { window.location.href = "login.html?registered=1"; }, 900);
+   });
+ 
+   /* ------------------------- Google login ------------------------- */
+diff --git a/login.html b/login.html
+index feeaeaa..87536e1 100644
+--- a/login.html
++++ b/login.html
+@@ -12,30 +12,11 @@
+   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+   <link href="css/base.css" rel="stylesheet" />
+-  <link href="css/pages/login.css" rel="stylesheet" />
++  <script src="js/core/auth-init.js"></script>
+ </head>
+ <body>
+ 
+-  <!-- ============================ Navbar ============================ -->
+-  <nav class="navbar navbar-expand-lg sticky-top">
+-    <div class="container navbar-finora">
+-      <div class="navbar-start">
+-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
+-          <span class="navbar-toggler-icon"></span>
+-        </button>
+-        <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+-          <span class="brand-logo"><img src="assets/logos/finora.png" alt="Finora"></span> Finora
+-        </a>
+-      </div>
+-      <div class="collapse navbar-collapse" id="nav">
+-        <ul class="navbar-nav mx-auto gap-1">
+-          <li class="nav-item"><a class="nav-link" href="home.html">Home</a></li>
+-          <li class="nav-item"><a class="nav-link" href="market.html">Market</a></li>
+-        </ul>
+-      </div>
+-      <div class="navbar-actions" data-nav-auth></div>
+-    </div>
+-  </nav>
++  <div id="header-placeholder"></div>
+ 
+   <!-- ============================= Auth ============================= -->
+   <main class="auth-wrap py-5">
+@@ -45,8 +26,11 @@
+         <!-- Marketing aside -->
+         <div class="col-lg-5 d-none d-lg-block">
+           <div class="auth-aside h-100 d-flex flex-column">
++            <a class="navbar-brand d-flex align-items-center gap-2 mb-4" href="index.html">
++              <span class="brand-logo"><img src="assets/logos/finora.png" alt="Finora"></span> Finora
++            </a>
+             <h2 class="fw-bold mb-3">Your portfolio,<br /><span class="brand-gradient-text">reimagined.</span></h2>
+-            <p class="text-secondary-2 mb-4">Trade commission-free with real-time data and portfolio tools built for modern investors.</p>
++            <p class="text-secondary-2 mb-4">Join 2.4M+ investors trading commission-free with real-time data and AI-powered insights.</p>
+ 
+             <div class="d-grid gap-3 mb-auto">
+               <div class="d-flex gap-3 align-items-start">
+@@ -58,10 +42,18 @@
+                 <div><div class="fw-semibold">Bank-grade security</div><div class="text-muted-2 small">2FA &amp; encryption protect your assets.</div></div>
+               </div>
+               <div class="d-flex gap-3 align-items-start">
+-                <span class="feature-icon" style="width:42px;height:42px;font-size:1.1rem"><i class="bi bi-pie-chart"></i></span>
+-                <div><div class="fw-semibold">Portfolio tracking</div><div class="text-muted-2 small">Monitor holdings, performance and watchlists in one place.</div></div>
++                <span class="feature-icon" style="width:42px;height:42px;font-size:1.1rem"><i class="bi bi-cash-stack"></i></span>
++                <div><div class="fw-semibold">$25,000 demo balance</div><div class="text-muted-2 small">Practice with virtual funds on signup.</div></div>
+               </div>
+             </div>
++
++            <div class="card-elevated p-3 mt-4">
++              <div class="d-flex gap-2 text-amber mb-1">
++                <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
++              </div>
++              <p class="text-secondary-2 small mb-2">“The cleanest trading app I've used. Finora makes investing feel effortless.”</p>
++              <div class="text-muted-2 small">— Alex R., verified investor</div>
++            </div>
+           </div>
+         </div>
+ 
+@@ -103,9 +95,6 @@
+                 <a href="#" class="small" data-reset-password>Forgot password?</a>
+               </div>
+               <button type="submit" class="btn btn-brand w-100 btn-lg mb-3">Log in</button>
+-              <button type="button" class="btn btn-social w-100" data-email-link-login>
+-                <i class="bi bi-envelope-paper me-2"></i>Email me a login link
+-              </button>
+             </form>
+ 
+             <!-- Register form -->
+@@ -114,7 +103,7 @@
+                 <label class="form-label">Full name</label>
+                 <div class="input-group">
+                   <span class="input-group-text"><i class="bi bi-person"></i></span>
+-                  <input type="text" class="form-control" name="name" placeholder="Your name" autocomplete="name" required />
++                  <input type="text" class="form-control" name="name" placeholder="Jane Doe" autocomplete="name" required />
+                 </div>
+               </div>
+               <div class="mb-3">
+@@ -153,7 +142,10 @@
+             </form>
+ 
+             <div class="divider-or my-3">or continue with</div>
+-            <button type="button" class="btn btn-social w-100" data-google-login><i class="bi bi-google me-2"></i>Google</button>
++            <div class="row g-2">
++              <div class="col-6"><button type="button" class="btn btn-social w-100" data-google-login><i class="bi bi-google me-2"></i>Google</button></div>
++              <div class="col-6"><button class="btn btn-social w-100" data-demo-social><i class="bi bi-apple me-2"></i>Apple</button></div>
++            </div>
+ 
+             <p class="text-center text-muted-2 small mt-4 mb-0" id="switchHint">
+               Don't have an account? <a href="#" data-switch="register">Sign up free</a>
+@@ -169,6 +161,7 @@
+   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+   <script src="js/core/firebase-config.js"></script>
++  <script src="js/core/components.js"></script>
+   <script src="js/core/main.js"></script>
+   <script src="js/pages/login.js"></script>
+ </body>
+diff --git a/market.html b/market.html
+index eb47da7..34282e9 100644
+--- a/market.html
++++ b/market.html
+@@ -13,29 +13,11 @@
+   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+   <link href="css/base.css" rel="stylesheet" />
+   <link href="css/pages/market.css" rel="stylesheet" />
++  <script src="js/core/auth-init.js"></script>
+ </head>
+ <body>
+ 
+-  <!-- ============================ Navbar ============================ -->
+-  <nav class="navbar navbar-expand-lg sticky-top">
+-    <div class="container navbar-finora">
+-      <div class="navbar-start">
+-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
+-          <span class="navbar-toggler-icon"></span>
+-        </button>
+-        <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+-          <span class="brand-logo"><img src="assets/logos/finora.png" alt="Finora"></span> Finora
+-        </a>
+-      </div>
+-      <div class="collapse navbar-collapse" id="nav">
+-        <ul class="navbar-nav mx-auto gap-1">
+-          <li class="nav-item"><a class="nav-link" href="home.html">Home</a></li>
+-          <li class="nav-item"><a class="nav-link" href="market.html">Market</a></li>
+-        </ul>
+-      </div>
+-      <div class="navbar-actions" data-nav-auth></div>
+-    </div>
+-  </nav>
++  <div id="header-placeholder"></div>
+ 
+   <div class="ticker-tape">
+     <div class="ticker-track" id="tickerTrack"><!-- filled by JS --></div>
+@@ -129,11 +111,7 @@
+ 
+   </main>
+ 
+-  <footer class="footer mt-5">
+-    <div class="container text-center">
+-      <span class="text-muted-2 small">© 2026 Finora.</span>
+-    </div>
+-  </footer>
++  <div id="footer-placeholder"></div>
+ 
+   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+@@ -141,6 +119,7 @@
+   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+   <script src="js/core/firebase-config.js"></script>
++  <script src="js/core/components.js"></script>
+   <script src="js/core/main.js"></script>
+   <script src="js/core/charts.js"></script>
+   <script src="js/core/api.js"></script>
+diff --git a/package.json b/package.json
+index 737c927..9e5fbf3 100644
+--- a/package.json
++++ b/package.json
+@@ -3,7 +3,7 @@
+   "version": "1.0.0",
+   "description": "Finora — a modern stock market web app built with HTML5, CSS3, Bootstrap 5 and Vanilla JS.",
+   "scripts": {
+-    "start": "python -m http.server 8001",
++    "start": "python3 -m http.server 8000",
+     "serve": "npx --yes serve ."
+   }
+ }
+diff --git a/portfolio.html b/portfolio.html
+index 9484b86..109eed7 100644
+--- a/portfolio.html
++++ b/portfolio.html
+@@ -12,30 +12,11 @@
+   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+   <link href="css/base.css" rel="stylesheet" />
+-  <link href="css/pages/portfolio.css" rel="stylesheet" />
++  <script src="js/core/auth-init.js"></script>
+ </head>
+ <body>
+ 
+-  <!-- ============================ Navbar ============================ -->
+-  <nav class="navbar navbar-expand-lg sticky-top">
+-    <div class="container navbar-finora">
+-      <div class="navbar-start">
+-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
+-          <span class="navbar-toggler-icon"></span>
+-        </button>
+-        <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+-          <span class="brand-logo"><img src="assets/logos/finora.png" alt="Finora"></span> Finora
+-        </a>
+-      </div>
+-      <div class="collapse navbar-collapse" id="nav">
+-        <ul class="navbar-nav mx-auto gap-1">
+-          <li class="nav-item"><a class="nav-link" href="home.html">Home</a></li>
+-          <li class="nav-item"><a class="nav-link" href="market.html">Market</a></li>
+-        </ul>
+-      </div>
+-      <div class="navbar-actions" data-nav-auth></div>
+-    </div>
+-  </nav>
++  <div id="header-placeholder"></div>
+ 
+   <main class="container py-4">
+     <!-- ============================ Header =========================== -->
+@@ -134,17 +115,13 @@
+     </div>
+   </main>
+ 
+-  <footer class="footer mt-5">
+-    <div class="container text-center">
+-      <span class="text-muted-2 small">© 2026 Finora.</span>
+-    </div>
+-  </footer>
++  <div id="footer-placeholder"></div>
+ 
+   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+   <script src="js/core/firebase-config.js"></script>
++  <script src="js/core/components.js"></script>
+   <script src="js/core/main.js"></script>
+   <script src="js/core/charts.js"></script>
+   <script src="js/core/api.js"></script>
+diff --git a/profile.html b/profile.html
+index 64dcda8..0603a30 100644
+--- a/profile.html
++++ b/profile.html
+@@ -12,49 +12,31 @@
+   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+   <link href="css/base.css" rel="stylesheet" />
+-  <link href="css/pages/profile.css" rel="stylesheet" />
++  <script src="js/core/auth-init.js"></script>
+ </head>
+ <body>
+ 
+-  <!-- ============================ Navbar ============================ -->
+-  <nav class="navbar navbar-expand-lg sticky-top">
+-    <div class="container navbar-finora">
+-      <div class="navbar-start">
+-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
+-          <span class="navbar-toggler-icon"></span>
+-        </button>
+-        <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+-          <span class="brand-logo"><img src="assets/logos/finora.png" alt="Finora"></span> Finora
+-        </a>
+-      </div>
+-      <div class="collapse navbar-collapse" id="nav">
+-        <ul class="navbar-nav mx-auto gap-1">
+-          <li class="nav-item"><a class="nav-link" href="home.html">Home</a></li>
+-          <li class="nav-item"><a class="nav-link" href="market.html">Market</a></li>
+-        </ul>
+-      </div>
+-      <div class="navbar-actions" data-nav-auth data-nav-minimal></div>
+-    </div>
+-  </nav>
++  <div id="header-placeholder"></div>
+ 
+   <main class="container py-4">
+     <!-- ============================ Header =========================== -->
+     <div class="card-finora overflow-hidden mb-4">
+-      <div class="px-4 py-4">
+-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+-          <div class="d-flex align-items-center gap-3">
+-            <div class="profile-avatar" id="avatar">…</div>
+-            <div>
+-              <h4 class="fw-bold mb-0" id="profileName">Loading…</h4>
+-              <div class="text-muted-2"><i class="bi bi-envelope me-1"></i><span id="profileEmail">—</span></div>
++      <div class="profile-cover"></div>
++      <div class="px-4 pb-4">
++        <div class="d-flex flex-wrap align-items-end justify-content-between gap-3">
++          <div class="d-flex align-items-end gap-3">
++            <div class="profile-avatar" id="avatar">JD</div>
++            <div class="pb-2">
++              <h4 class="fw-bold mb-0" id="profileName">Jane Doe</h4>
++              <div class="text-muted-2"><i class="bi bi-envelope me-1"></i><span id="profileEmail">jane@example.com</span></div>
+               <div class="mt-2 d-flex gap-2">
+-                <span class="badge badge-gold" id="planBadge"><i class="bi bi-star-fill me-1"></i>—</span>
+-                <span class="badge badge-soft"><i class="bi bi-calendar3 me-1"></i><span id="joinedBadge">—</span></span>
++                <span class="badge badge-gold" id="planBadge"><i class="bi bi-star-fill me-1"></i>Free plan</span>
++                <span class="badge badge-soft"><i class="bi bi-calendar3 me-1"></i><span id="joinedBadge">Joined recently</span></span>
+               </div>
+             </div>
+           </div>
+-          <div class="d-flex gap-2">
+-            <a href="prosubscription.html" class="btn btn-premium"><i class="bi bi-stars me-1"></i>Upgrade to Premium</a>
++          <div class="pb-2 d-flex gap-2">
++            <button class="btn btn-premium"><i class="bi bi-stars me-1"></i>Upgrade to Premium</button>
+             <button class="btn btn-ghost" data-logout-btn><i class="bi bi-box-arrow-right me-1"></i>Log out</button>
+           </div>
+         </div>
+@@ -67,6 +49,7 @@
+         <div class="card-finora p-2 profile-nav" id="profileTabs">
+           <div class="list-group list-group-flush">
+             <button class="list-group-item active" data-target="overview"><i class="bi bi-grid-1x2"></i> Overview</button>
++            <button class="list-group-item" data-target="portfolio"><i class="bi bi-briefcase"></i> Portfolio</button>
+             <button class="list-group-item" data-target="settings"><i class="bi bi-gear"></i> Account settings</button>
+             <button class="list-group-item" data-target="security"><i class="bi bi-shield-lock"></i> Security</button>
+           </div>
+@@ -74,7 +57,8 @@
+ 
+         <div class="card-elevated p-3 mt-3">
+           <div class="text-muted-2 small mb-1">Buying power</div>
+-          <div class="fs-4 fw-bold text-brand" id="buyingPower">—</div>
++          <div class="fs-4 fw-bold text-brand" id="buyingPower">$25,000.00</div>
++          <button class="btn btn-outline-brand btn-sm w-100 mt-2"><i class="bi bi-plus-lg me-1"></i>Add funds</button>
+         </div>
+       </div>
+ 
+@@ -87,29 +71,29 @@
+             <div class="col-sm-6 col-xl-3">
+               <div class="stat-card h-100">
+                 <div class="label mb-1"><i class="bi bi-wallet2 me-1"></i>Portfolio value</div>
+-                <div class="value" id="statPortfolio">—</div>
+-                <span class="badge mt-1 d-none" id="statPortfolioBadge"></span>
++                <div class="value" id="statPortfolio">$0.00</div>
++                <span class="badge badge-bull mt-1"><i class="bi bi-caret-up-fill"></i> 12.4%</span>
+               </div>
+             </div>
+             <div class="col-sm-6 col-xl-3">
+               <div class="stat-card h-100">
+                 <div class="label mb-1"><i class="bi bi-graph-up me-1"></i>Today's P/L</div>
+-                <div class="value" id="statTodayPL">—</div>
+-                <span class="badge mt-1 d-none" id="statTodayPLBadge"></span>
++                <div class="value text-bull">+$482.17</div>
++                <span class="badge badge-bull mt-1"><i class="bi bi-caret-up-fill"></i> 1.92%</span>
+               </div>
+             </div>
+             <div class="col-sm-6 col-xl-3">
+               <div class="stat-card h-100">
+                 <div class="label mb-1"><i class="bi bi-cash-coin me-1"></i>Buying power</div>
+-                <div class="value" id="statBuying">—</div>
++                <div class="value" id="statBuying">$25,000</div>
+                 <span class="text-muted-2 small">Available to trade</span>
+               </div>
+             </div>
+             <div class="col-sm-6 col-xl-3">
+               <div class="stat-card h-100">
+                 <div class="label mb-1"><i class="bi bi-pie-chart me-1"></i>Holdings</div>
+-                <div class="value" id="statHoldings">—</div>
+-                <span class="text-muted-2 small" id="statHoldingsSub">—</span>
++                <div class="value" id="statHoldings">0</div>
++                <span class="text-muted-2 small">Across 3 sectors</span>
+               </div>
+             </div>
+           </div>
+@@ -128,6 +112,31 @@
+           </div>
+         </section>
+ 
++        <!-- Portfolio -->
++        <section class="tab-pane-fade" data-pane="portfolio" id="portfolio">
++          <div class="card-finora">
++            <div class="p-4 d-flex justify-content-between align-items-center">
++              <h5 class="fw-bold mb-0">Your holdings</h5>
++              <a href="index.html#trending" class="btn btn-brand btn-sm"><i class="bi bi-plus-lg me-1"></i>Buy stocks</a>
++            </div>
++            <div class="table-responsive">
++              <table class="table table-finora">
++                <thead>
++                  <tr>
++                    <th>Asset</th>
++                    <th class="text-end">Shares</th>
++                    <th class="text-end">Avg cost</th>
++                    <th class="text-end">Price</th>
++                    <th class="text-end">Value</th>
++                    <th class="text-end">Total return</th>
++                  </tr>
++                </thead>
++                <tbody id="holdingsBody"></tbody>
++              </table>
++            </div>
++          </div>
++        </section>
++
+         <!-- Settings -->
+         <section class="tab-pane-fade" data-pane="settings">
+           <div class="card-finora p-4 mb-4">
+@@ -143,7 +152,7 @@
+                   <input type="email" class="form-control" name="email" required />
+                 </div>
+                 <div class="col-md-6">
+-                  <label class="form-label">Phone (optional)</label>
++                  <label class="form-label">Phone</label>
+                   <input type="tel" class="form-control" name="phone" placeholder="+1 (555) 000-0000" />
+                 </div>
+                 <div class="col-md-6">
+@@ -158,7 +167,7 @@
+                   </select>
+                 </div>
+                 <div class="col-12">
+-                  <label class="form-label">Bio (optional)</label>
++                  <label class="form-label">Bio</label>
+                   <textarea class="form-control" name="bio" rows="3" placeholder="Tell us about your investing style..."></textarea>
+                 </div>
+               </div>
+@@ -181,14 +190,6 @@
+               <div class="form-check form-switch"><input class="form-check-input" type="checkbox" checked /></div>
+             </div>
+             <hr class="divider-line my-2" />
+-            <div class="d-flex justify-content-between align-items-center py-2 flex-wrap gap-3">
+-              <div><div class="fw-semibold">Display currency</div><div class="text-muted-2 small">Show prices and balances in US dollars or euros.</div></div>
+-              <div class="auth-tabs profile-currency-toggle" id="currencyToggle">
+-                <button type="button" data-currency="USD">USD ($)</button>
+-                <button type="button" data-currency="EUR">EUR (€)</button>
+-              </div>
+-            </div>
+-            <hr class="divider-line my-2" />
+             <div class="d-flex justify-content-between align-items-center py-2">
+               <div><div class="fw-semibold">Product announcements</div><div class="text-muted-2 small">New features and occasional offers.</div></div>
+               <div class="form-check form-switch"><input class="form-check-input" type="checkbox" /></div>
+@@ -204,24 +205,15 @@
+               <div class="row g-3">
+                 <div class="col-md-12">
+                   <label class="form-label">Current password</label>
+-                  <div class="input-group">
+-                    <input type="password" class="form-control" name="current" autocomplete="current-password" required />
+-                    <button class="btn btn-social" type="button" data-toggle-pw aria-label="Show current password"><i class="bi bi-eye"></i></button>
+-                  </div>
++                  <input type="password" class="form-control" name="current" required />
+                 </div>
+                 <div class="col-md-6">
+                   <label class="form-label">New password</label>
+-                  <div class="input-group">
+-                    <input type="password" class="form-control" name="next" autocomplete="new-password" required />
+-                    <button class="btn btn-social" type="button" data-toggle-pw aria-label="Show new password"><i class="bi bi-eye"></i></button>
+-                  </div>
++                  <input type="password" class="form-control" name="next" required />
+                 </div>
+                 <div class="col-md-6">
+                   <label class="form-label">Confirm new password</label>
+-                  <div class="input-group">
+-                    <input type="password" class="form-control" name="confirm" autocomplete="new-password" required />
+-                    <button class="btn btn-social" type="button" data-toggle-pw aria-label="Show confirm password"><i class="bi bi-eye"></i></button>
+-                  </div>
++                  <input type="password" class="form-control" name="confirm" required />
+                 </div>
+               </div>
+               <button type="submit" class="btn btn-brand mt-3">Update password</button>
+@@ -249,17 +241,13 @@
+     </div>
+   </main>
+ 
+-  <footer class="footer mt-5">
+-    <div class="container text-center">
+-      <span class="text-muted-2 small">© 2026 Finora</span>
+-    </div>
+-  </footer>
++  <div id="footer-placeholder"></div>
+ 
+   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+   <script src="js/core/firebase-config.js"></script>
++  <script src="js/core/components.js"></script>
+   <script src="js/core/main.js"></script>
+   <script src="js/core/charts.js"></script>
+   <script src="js/core/api.js"></script>
+diff --git a/prosubscription.html b/prosubscription.html
+index 97c7064..b87c751 100644
+--- a/prosubscription.html
++++ b/prosubscription.html
+@@ -12,30 +12,11 @@
+   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+   <link href="css/base.css" rel="stylesheet" />
+-  <link href="css/pages/prosubscription.css" rel="stylesheet" />
++  <script src="js/core/auth-init.js"></script>
+ </head>
+ <body>
+ 
+-  <!-- ============================ Navbar ============================ -->
+-  <nav class="navbar navbar-expand-lg sticky-top">
+-    <div class="container navbar-finora">
+-      <div class="navbar-start">
+-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
+-          <span class="navbar-toggler-icon"></span>
+-        </button>
+-        <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+-          <span class="brand-logo"><img src="assets/logos/finora.png" alt="Finora"></span> Finora
+-        </a>
+-      </div>
+-      <div class="collapse navbar-collapse" id="nav">
+-        <ul class="navbar-nav mx-auto gap-1">
+-          <li class="nav-item"><a class="nav-link" href="home.html">Home</a></li>
+-          <li class="nav-item"><a class="nav-link" href="market.html">Market</a></li>
+-        </ul>
+-      </div>
+-      <div class="navbar-actions" data-nav-auth></div>
+-    </div>
+-  </nav>
++  <div id="header-placeholder"></div>
+ 
+   <main class="container py-5">
+     <!-- ============================= Hero =========================== -->
+@@ -99,23 +80,20 @@
+           </div>
+           <div class="accordion-item bg-transparent border-finora mb-2">
+             <h2 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#q3">What payment methods do you accept?</button></h2>
+-            <div id="q3" class="accordion-collapse collapse" data-bs-parent="#faq"><div class="accordion-body text-secondary-2">All major credit cards, PayPal and Apple Pay.</div></div>
++            <div id="q3" class="accordion-collapse collapse" data-bs-parent="#faq"><div class="accordion-body text-secondary-2">All major credit cards, PayPal and Apple Pay. (This is a demo — no real payments are processed.)</div></div>
+           </div>
+         </div>
+       </div>
+     </div>
+   </main>
+ 
+-  <footer class="footer mt-5">
+-    <div class="container text-center">
+-      <span class="text-muted-2 small">© 2026 Finora.</span>
+-    </div>
+-  </footer>
++  <div id="footer-placeholder"></div>
+ 
+   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+   <script src="js/core/firebase-config.js"></script>
++  <script src="js/core/components.js"></script>
+   <script src="js/core/main.js"></script>
+   <script src="js/pages/prosubscription.js"></script>
+ </body>
+diff --git a/watchlist.html b/watchlist.html
+index 577d2f4..2969c16 100644
+--- a/watchlist.html
++++ b/watchlist.html
+@@ -16,26 +16,7 @@
+ </head>
+ <body>
+ 
+-  <!-- ============================ Navbar ============================ -->
+-  <nav class="navbar navbar-expand-lg sticky-top">
+-    <div class="container navbar-finora">
+-      <div class="navbar-start">
+-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
+-          <span class="navbar-toggler-icon"></span>
+-        </button>
+-        <a class="navbar-brand d-flex align-items-center gap-2" href="index.html">
+-          <span class="brand-logo"><img src="assets/logos/finora.png" alt="Finora"></span> Finora
+-        </a>
+-      </div>
+-      <div class="collapse navbar-collapse" id="nav">
+-        <ul class="navbar-nav mx-auto gap-1">
+-          <li class="nav-item"><a class="nav-link" href="home.html">Home</a></li>
+-          <li class="nav-item"><a class="nav-link" href="market.html">Market</a></li>
+-        </ul>
+-      </div>
+-      <div class="navbar-actions" data-nav-auth></div>
+-    </div>
+-  </nav>
++  <div id="header-placeholder"></div>
+ 
+   <main class="container py-4">
+     <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+@@ -60,11 +41,7 @@
+     </div>
+   </main>
+ 
+-  <footer class="footer mt-5">
+-    <div class="container text-center">
+-      <span class="text-muted-2 small">© 2026 Finora.</span>
+-    </div>
+-  </footer>
++  <div id="footer-placeholder"></div>
+ 
+   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+@@ -72,6 +49,7 @@
+   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+   <script src="js/core/firebase-config.js"></script>
++  <script src="js/core/components.js"></script>
+   <script src="js/core/main.js"></script>
+   <script src="js/core/charts.js"></script>
+   <script src="js/core/api.js"></script>
