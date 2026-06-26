@@ -15,6 +15,14 @@
   gap: 0.75rem;
 }
 
+[data-landing-cta-shell][data-landing-cta-pending] [data-landing-cta] {
+  display: none !important;
+}
+
+[data-landing-cta-shell] {
+  min-height: 3.25rem;
+}
+
 .landing-cta-or {
   font-size: 0.9rem;
   font-weight: 500;

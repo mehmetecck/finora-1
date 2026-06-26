@@ -13,6 +13,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
   <link href="css/base.css" rel="stylesheet" />
   <script src="js/core/auth-init.js"></script>
+  <link href="css/pages/profile.css" rel="stylesheet" />
 </head>
 <body>
 
@@ -71,15 +72,15 @@
             <div class="col-sm-6 col-xl-3">
               <div class="stat-card h-100">
                 <div class="label mb-1"><i class="bi bi-wallet2 me-1"></i>Portfolio value</div>
-                <div class="value" id="statPortfolio">$0.00</div>
-                <span class="badge badge-bull mt-1"><i class="bi bi-caret-up-fill"></i> 12.4%</span>
+                <div class="value" id="statPortfolio">—</div>
+                <span class="badge mt-1 d-none" id="statPortfolioBadge"></span>
               </div>
             </div>
             <div class="col-sm-6 col-xl-3">
               <div class="stat-card h-100">
                 <div class="label mb-1"><i class="bi bi-graph-up me-1"></i>Today's P/L</div>
-                <div class="value text-bull">+$482.17</div>
-                <span class="badge badge-bull mt-1"><i class="bi bi-caret-up-fill"></i> 1.92%</span>
+                <div class="value" id="statTodayPL">—</div>
+                <span class="badge mt-1 d-none" id="statTodayPLBadge"></span>
               </div>
             </div>
             <div class="col-sm-6 col-xl-3">
@@ -92,8 +93,8 @@
             <div class="col-sm-6 col-xl-3">
               <div class="stat-card h-100">
                 <div class="label mb-1"><i class="bi bi-pie-chart me-1"></i>Holdings</div>
-                <div class="value" id="statHoldings">0</div>
-                <span class="text-muted-2 small">Across 3 sectors</span>
+                <div class="value" id="statHoldings">—</div>
+                <span class="text-muted-2 small" id="statHoldingsSub">—</span>
               </div>
             </div>
           </div>
@@ -117,7 +118,7 @@
           <div class="card-finora">
             <div class="p-4 d-flex justify-content-between align-items-center">
               <h5 class="fw-bold mb-0">Your holdings</h5>
-              <a href="index.html#trending" class="btn btn-brand btn-sm"><i class="bi bi-plus-lg me-1"></i>Buy stocks</a>
+              <a href="market.html" class="btn btn-brand btn-sm"><i class="bi bi-plus-lg me-1"></i>Buy stocks</a>
             </div>
             <div class="table-responsive">
               <table class="table table-finora">
@@ -205,15 +206,24 @@
               <div class="row g-3">
                 <div class="col-md-12">
                   <label class="form-label">Current password</label>
-                  <input type="password" class="form-control" name="current" required />
+                  <div class="input-group">
+                    <input type="password" class="form-control" name="current" autocomplete="current-password" required />
+                    <button class="btn btn-social" type="button" data-toggle-pw aria-label="Show current password"><i class="bi bi-eye"></i></button>
+                  </div>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">New password</label>
-                  <input type="password" class="form-control" name="next" required />
+                  <div class="input-group">
+                    <input type="password" class="form-control" name="next" autocomplete="new-password" required />
+                    <button class="btn btn-social" type="button" data-toggle-pw aria-label="Show new password"><i class="bi bi-eye"></i></button>
+                  </div>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Confirm new password</label>
-                  <input type="password" class="form-control" name="confirm" required />
+                  <div class="input-group">
+                    <input type="password" class="form-control" name="confirm" autocomplete="new-password" required />
+                    <button class="btn btn-social" type="button" data-toggle-pw aria-label="Show confirm password"><i class="bi bi-eye"></i></button>
+                  </div>
                 </div>
               </div>
               <button type="submit" class="btn btn-brand mt-3">Update password</button>

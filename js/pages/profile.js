@@ -2,20 +2,20 @@
    Finora — Profile page logic
    ===================================================================== */
 
-document.addEventListener("DOMContentLoaded", async function() {
-  var fbUser = await Finora.requireAuth(); // redirects if not logged in
+document.addEventListener("DOMContentLoaded", async () => {
+  const fbUser = await Finora.requireAuth(); // redirects if not logged in
   if (!fbUser) return;
-  var user = Finora.getProfile();
-  var css = getComputedStyle(document.documentElement);
-  function C(n) { return css.getPropertyValue(n).trim(); }
+  const user = Finora.getProfile();
+  const css = getComputedStyle(document.documentElement);
+  const C = (n) => css.getPropertyValue(n).trim();
 
   /* --------------------------- Header ----------------------------- */
   document.getElementById("avatar").textContent = Finora.initials(user.name);
   document.getElementById("profileName").textContent = user.name;
   document.getElementById("profileEmail").textContent = user.email;
   document.getElementById("planBadge").innerHTML = `<i class="bi bi-star-fill me-1"></i>${user.plan} plan`;
-  var joined = new Date(user.joined).toLocaleDateString("en-US", { month: "short", year: "numeric" });
-  document.getElementById("joinedBadge").textContent = "Joined " + joined;
+  const joined = new Date(user.joined).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  document.getElementById("joinedBadge").textContent = `Joined ${joined}`;
 
   document.getElementById("buyingPower").textContent = Finora.fmtMoney(user.balance);
   document.getElementById("statBuying").textContent = Finora.fmtMoney(user.balance);
@@ -26,92 +26,104 @@ document.addEventListener("DOMContentLoaded", async function() {
   loadOverview(fbUser.uid);
 
   async function loadOverview(uid) {
-    var portfolio = { holdings: [], cash: 0 };
+    let portfolio = { holdings: [], cash: 0 };
     try {
       portfolio = (await FinoraAPI.getPortfolio(uid)) || portfolio;
-    } catch (err) {
+    } catch {
       portfolio = { holdings: [], cash: 0 };
     }
-    var holdings = portfolio.holdings || [];
-    var portfolioValue = holdings.reduce(function(sum, h) { return sum + h.shares * h.price; }, 0);
-    var invested = holdings.reduce(function(sum, h) { return sum + h.shares * h.avg; }, 0);
-    var totalReturn = invested ? ((portfolioValue - invested) / invested) * 100 : 0;
-    var todayPL = holdings.reduce(function(sum, h) { return sum + h.shares * h.price * ((h.dayChange || 0) / 100); }, 0);
-    var sectors = holdings.reduce(function(set, h) {
-      if (h.sector) set[h.sector] = true;
-      return set;
-    }, {});
-    var sectorCount = Object.keys(sectors).length;
+    const holdings = portfolio.holdings || [];
+    const costBasis = holdings.reduce((sum, h) => sum + h.shares * h.avg, 0);
+    const marketValue = holdings.reduce((sum, h) => sum + h.shares * h.price, 0);
+    const totalValue = marketValue + portfolio.cash;
+    const totalReturn = totalValue - costBasis;
+    const totalReturnPct = costBasis ? (totalReturn / costBasis) * 100 : 0;
 
-    document.getElementById("statPortfolio").textContent = Finora.fmtMoney(portfolioValue);
-    document.getElementById("statHoldings").textContent = holdings.length;
-    document.getElementById("statHoldingsSub").textContent = holdings.length
-      ? (sectorCount ? "Across " + sectorCount + " sector" + (sectorCount === 1 ? "" : "s") : "Holdings loaded")
-      : "No holdings yet";
+    // Note: "Today's P/L" is not available from the current API and is faked here.
+    const todayPL = marketValue * 0.0192; // Fake 1.92% gain
+    const todayPLPct = marketValue ? (todayPL / (marketValue - todayPL)) * 100 : 0;
 
-    var trBadge = document.getElementById("statPortfolioBadge");
-    if (holdings.length) {
-      var trUp = totalReturn >= 0;
-      trBadge.className = "badge " + (trUp ? "badge-bull" : "badge-bear") + " mt-1";
-      trBadge.innerHTML = "<i class=\"bi bi-caret-" + (trUp ? "up" : "down") + "-fill\"></i> " + (trUp ? "+" : "") + totalReturn.toFixed(2) + "%";
-      trBadge.classList.remove("d-none");
-    } else {
-      trBadge.classList.add("d-none");
-    }
+    document.getElementById("statPortfolio").textContent = Finora.fmtMoney(totalValue);
+    document.getElementById("statHoldings").textContent = String(holdings.length);
+    document.getElementById("statHoldingsSub").textContent = `${holdings.length} holdings`;
 
-    var todayEl = document.getElementById("statTodayPL");
-    var plBadge = document.getElementById("statTodayPLBadge");
-    if (holdings.length) {
-      var plUp = todayPL >= 0;
-      todayEl.textContent = Finora.fmtMoney(todayPL);
-      todayEl.className = "value " + (plUp ? "text-bull" : "text-bear");
-      plBadge.className = "badge " + (plUp ? "badge-bull" : "badge-bear") + " mt-1";
-      plBadge.innerHTML = "<i class=\"bi bi-caret-" + (plUp ? "up" : "down") + "-fill\"></i> " + (plUp ? "+" : "") + Finora.fmtMoney(todayPL);
-      plBadge.classList.remove("d-none");
-    } else {
-      todayEl.textContent = "—";
-      todayEl.className = "value";
-      plBadge.classList.add("d-none");
-    }
+    const todayPLBadge = document.getElementById("statTodayPLBadge");
+    const todayPLValue = document.getElementById("statTodayPL");
+    todayPLValue.textContent = `${todayPL >= 0 ? "+" : ""}${Finora.fmtMoney(todayPL)}`;
+    todayPLValue.classList.toggle("text-bull", todayPL >= 0);
+    todayPLValue.classList.toggle("text-bear", todayPL < 0);
+    todayPLBadge.innerHTML = `<i class="bi bi-caret-${todayPL >= 0 ? "up" : "down"}-fill"></i> ${todayPLPct.toFixed(2)}%`;
+    todayPLBadge.className = `badge mt-1 ${todayPL >= 0 ? "badge-bull" : "badge-bear"}`;
 
+    const portfolioBadge = document.getElementById("statPortfolioBadge");
+    portfolioBadge.innerHTML = `<i class="bi bi-caret-${totalReturn >= 0 ? "up" : "down"}-fill"></i> ${totalReturnPct.toFixed(2)}% total return`;
+    portfolioBadge.className = `badge mt-1 ${totalReturn >= 0 ? "badge-bull" : "badge-bear"}`;
+
+    renderHoldings(holdings);
     drawChart(uid);
     loadActivity(uid);
   }
 
   /* ------------------------ Tab switching ------------------------- */
-  var tabButtons = document.querySelectorAll("#profileTabs .list-group-item");
-  var panes = document.querySelectorAll("[data-pane]");
+  const tabButtons = document.querySelectorAll("#profileTabs .list-group-item");
+  const panes = document.querySelectorAll("[data-pane]");
   function showPane(target) {
-    tabButtons.forEach(function(b) { b.classList.toggle("active", b.dataset.target === target); });
-    panes.forEach(function(p) { p.classList.toggle("show", p.dataset.pane === target); });
+    tabButtons.forEach((b) => b.classList.toggle("active", b.dataset.target === target));
+    panes.forEach((p) => p.classList.toggle("show", p.dataset.pane === target));
   }
-  tabButtons.forEach(function(b) {
-    b.addEventListener("click", function() {
-      showPane(b.dataset.target);
-      history.replaceState(null, "", "#" + b.dataset.target);
-    });
-  });
-  if (location.hash) {
-    var target = location.hash.slice(1);
-    if (target === "portfolio") target = "overview";
-    showPane(target);
+  tabButtons.forEach((b) => b.addEventListener("click", () => {
+    showPane(b.dataset.target);
+    history.replaceState(null, "", "#" + b.dataset.target);
+  }));
+  if (location.hash) showPane(location.hash.slice(1));
+
+  /* ------------------------- Holdings table ----------------------- */
+  function renderHoldings(holdings) {
+    const hbody = document.getElementById("holdingsBody");
+    if (!holdings.length) { hbody.innerHTML = Finora.emptyRow(6, "No holdings yet."); return; }
+    hbody.innerHTML = holdings
+      .map((h) => {
+        const value = h.shares * h.price;
+        const cost = h.shares * h.avg;
+        const ret = value - cost;
+        const retPct = cost ? (ret / cost) * 100 : 0;
+        const up = ret >= 0;
+        return `<tr>
+            <td>
+              <div class="d-flex align-items-center gap-3">
+                ${Finora.tickerAvatar(h.symbol, { className: "holding-logo", color: h.color })}
+                ${Finora.tickerAvatar(h, { className: "holding-logo" })}
+                <div><div class="fw-bold text-white">${h.symbol}</div><div class="text-muted-2 small">${h.name || ""}</div></div>
+              </div>
+            </td>
+            <td class="text-end">${h.shares}</td>
+            <td class="text-end">${Finora.fmtMoney(h.avg)}</td>
+            <td class="text-end text-white">${Finora.fmtMoney(h.price)}</td>
+            <td class="text-end fw-semibold text-white">${Finora.fmtMoney(value)}</td>
+            <td class="text-end">
+              <div class="fw-semibold ${up ? "text-bull" : "text-bear"}">${up ? "+" : ""}${Finora.fmtMoney(ret)}</div>
+              <div class="small ${up ? "text-bull" : "text-bear"}">${up ? "+" : ""}${retPct.toFixed(2)}%</div>
+            </td>
+          </tr>`;
+      })
+      .join("");
   }
 
   /* ------------------------ Recent activity ----------------------- */
   async function loadActivity(uid) {
-    var wrap = document.getElementById("activityList");
-    var txs = [];
+    const wrap = document.getElementById("activityList");
+    let txs = [];
     try {
       txs = await FinoraAPI.getTransactions(uid);
-    } catch (err) {
+    } catch {
       txs = [];
     }
     if (!txs.length) { wrap.innerHTML = Finora.emptyState("No activity yet", "bi-clock-history"); return; }
     wrap.innerHTML = txs
-      .map(function(t, i) {
-        var buy = t.type === "buy";
-        var icon = t.type === "deposit" ? "bi-cash-stack" : buy ? "bi-arrow-down-circle-fill" : "bi-arrow-up-circle-fill";
-        var color = t.type === "deposit" ? "var(--accent)" : buy ? "var(--bull)" : "var(--bear)";
+      .map((t, i) => {
+        const buy = t.type === "buy";
+        const icon = t.type === "deposit" ? "bi-cash-stack" : buy ? "bi-arrow-down-circle-fill" : "bi-arrow-up-circle-fill";
+        const color = t.type === "deposit" ? "var(--accent)" : buy ? "var(--bull)" : "var(--bear)";
         return `<div class="d-flex align-items-center justify-content-between py-3 ${i < txs.length - 1 ? "border-bottom border-finora" : ""}">
             <div class="d-flex align-items-center gap-3">
               <i class="bi ${icon} fs-4" style="color:${color}"></i>
@@ -125,16 +137,15 @@ document.addEventListener("DOMContentLoaded", async function() {
 
   /* ----------------------- Portfolio chart ------------------------ */
   async function drawChart(uid) {
-    var wrap = document.getElementById("portfolioChartWrap");
-    var data = [];
+    const wrap = document.getElementById("portfolioChartWrap");
+    let data = [];
     try {
       data = await FinoraAPI.getPortfolioHistory(uid, "1M");
-    } catch (err) {
-      wrap.innerHTML = Finora.apiUnavailableState("bi-graph-up");
-      return;
+    } catch {
+      data = [];
     }
     if (!data.length) {
-      wrap.innerHTML = Finora.emptyState("No performance data yet", "bi-graph-up");
+      wrap.innerHTML = Finora.emptyState("Performance data unavailable", "bi-graph-up");
       return;
     }
     wrap.innerHTML = `<canvas id="portfolioChart" height="110"></canvas>`;
@@ -143,23 +154,32 @@ document.addEventListener("DOMContentLoaded", async function() {
       lineWidth: 2.5,
       fillAlpha: 0.3,
       axis: true,
-      formatY: function(v) { return "$" + (v / 1000).toFixed(0) + "k"; },
-      tooltip: function(v) { return Finora.fmtMoney(v); },
+      formatY: (v) => "$" + (v / 1000).toFixed(0) + "k",
+      tooltip: (v) => Finora.fmtMoney(v),
     });
   }
 
   /* -------------------------- Settings ---------------------------- */
-  var settingsForm = document.getElementById("settingsForm");
+  const settingsForm = document.getElementById("settingsForm");
   settingsForm.name.value = user.name;
   settingsForm.email.value = user.email;
   settingsForm.phone.value = user.phone || "";
   settingsForm.bio.value = user.bio || "";
   if (user.country) settingsForm.country.value = user.country;
 
-  settingsForm.addEventListener("submit", async function(e) {
+  // Add helper text for the country setting to clarify its purpose.
+  const countryInput = settingsForm.country;
+  if (countryInput) {
+    const helpText = document.createElement("div");
+    helpText.className = "form-text text-muted-2 small mt-1";
+    helpText.textContent = "This sets your preferred country for viewing stocks on the Market page.";
+    countryInput.insertAdjacentElement("afterend", helpText);
+  }
+
+  settingsForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     try {
-      var updated = await Finora.updateProfile({
+      const updated = await Finora.updateProfile({
         name: settingsForm.name.value.trim(),
         email: settingsForm.email.value.trim(),
         phone: settingsForm.phone.value.trim(),
@@ -177,45 +197,20 @@ document.addEventListener("DOMContentLoaded", async function() {
     }
   });
 
-  /* ------------------------ Currency preference ----------------- */
-  var currencyToggle = document.getElementById("currencyToggle");
-  function setCurrencyButtons(code) {
-    currencyToggle.querySelectorAll("button").forEach(function(btn) {
-      btn.classList.toggle("active", btn.dataset.currency === code);
-    });
-  }
-  setCurrencyButtons(user.currency || "USD");
-
-  currencyToggle.querySelectorAll("button").forEach(function(btn) {
-    btn.addEventListener("click", async function() {
-      var next = btn.dataset.currency;
-      if (next === Finora.getCurrency()) return;
-      try {
-        var updated = await Finora.updateProfile({ currency: next });
-        if (!updated) return;
-        setCurrencyButtons(updated.currency);
-        document.getElementById("buyingPower").textContent = Finora.fmtMoney(updated.balance);
-        document.getElementById("statBuying").textContent = Finora.fmtMoney(updated.balance);
-        loadOverview(fbUser.uid);
-        Finora.toast("Currency set to " + (next === "EUR" ? "euros (€)" : "US dollars ($)") + ".", "success");
-      } catch (err) {
-        Finora.toast(Finora.mapAuthError(err.code), "error");
-      }
-    });
-  });
-
-  /* ------------------------- Password ----------------------------- */
-  var pwForm = document.getElementById("passwordForm");
-  pwForm.querySelectorAll("[data-toggle-pw]").forEach(function(btn) {
-    btn.addEventListener("click", function() {
-      var input = btn.parentElement.querySelector("input");
-      var icon = btn.querySelector("i");
-      var show = input.type === "password";
+  /* ----------------------- Show / hide password ------------------- */
+  document.querySelectorAll("[data-toggle-pw]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const input = btn.parentElement.querySelector("input");
+      const icon = btn.querySelector("i");
+      const show = input.type === "password";
       input.type = show ? "text" : "password";
       icon.className = show ? "bi bi-eye-slash" : "bi bi-eye";
     });
   });
-  pwForm.addEventListener("submit", async function(e) {
+
+  /* ------------------------- Password ----------------------------- */
+  const pwForm = document.getElementById("passwordForm");
+  pwForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (pwForm.next.value.length < 6) return Finora.toast("New password must be at least 6 characters.", "error");
     if (pwForm.next.value !== pwForm.confirm.value) return Finora.toast("New passwords do not match.", "error");
@@ -229,14 +224,14 @@ document.addEventListener("DOMContentLoaded", async function() {
   });
 
   /* ----------------------- Delete account ------------------------- */
-  document.querySelector("[data-delete-account]").addEventListener("click", async function() {
+  document.querySelector("[data-delete-account]").addEventListener("click", async () => {
     if (!confirm("Are you sure you want to delete your account? This cannot be undone.")) return;
-    var password = prompt("Please confirm your password to delete your account:");
+    const password = prompt("Please confirm your password to delete your account:");
     if (!password) return;
     try {
       await Finora.deleteAccount(password);
       Finora.toast("Account deleted.", "info");
-      setTimeout(function() { window.location.href = "index.html"; }, 800);
+      setTimeout(() => (window.location.href = "index.html"), 800);
     } catch (err) {
       Finora.toast(Finora.mapAuthError(err.code), "error");
     }

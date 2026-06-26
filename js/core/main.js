@@ -740,10 +740,6 @@ var Finora = (function() {
       window.location.href = "index.html";
       return false;
     }
-    if (!user && (path === "index.html" || path === "")) {
-      var nav = document.querySelector(".navbar-nav");
-      if (nav) nav.classList.add("d-none");
-    }
     return true;
   }
 

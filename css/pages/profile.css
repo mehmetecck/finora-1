@@ -25,6 +25,11 @@
 .stat-card .label { color: var(--text-muted); font-size: 0.82rem; font-weight: 500; }
 .stat-card .value { font-size: 1.6rem; font-weight: 800; }
 
+.profile-cover {
+  height: 160px;
+  background: linear-gradient(135deg, var(--grad-start), var(--grad-mid), var(--grad-end));
+}
+
 .tab-pane-fade { display: none; }
 .tab-pane-fade.show { display: block; animation: fadeIn 0.3s ease; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }

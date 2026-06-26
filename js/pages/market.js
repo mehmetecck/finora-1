@@ -3,7 +3,8 @@
    Browse hub (search, indices, trending) + stock detail view.
    ===================================================================== */
 
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", async function() {
+  await Finora.authReady; // Wait for auth state to be resolved
   var css = getComputedStyle(document.documentElement);
   function C(n) { return css.getPropertyValue(n).trim(); }
 
@@ -16,6 +17,7 @@ document.addEventListener("DOMContentLoaded", function() {
   var browseCountryResultsEl = document.getElementById("browseCountryResults");
 
   var MARKET_COUNTRIES = [
+    { code: "WW", name: "Worldwide", flag: "🌐" },
     { code: "US", name: "United States", flag: "\uD83C\uDDFA\uD83C\uDDF8" },
     { code: "GB", name: "United Kingdom", flag: "\uD83C\uDDEC\uD83C\uDDE7" },
     { code: "DE", name: "Germany", flag: "\uD83C\uDDE9\uD83C\uDDEA" },
@@ -36,6 +38,7 @@ document.addEventListener("DOMContentLoaded", function() {
     { code: "BR", name: "Brazil", flag: "\uD83C\uDDE7\uD83C\uDDF7" },
     { code: "MX", name: "Mexico", flag: "\uD83C\uDDF2\uD83C\uDDFD" },
   ];
+  var MARKET_COUNTRIES = [];
 
   var EXCHANGE_COUNTRY = {
     NASDAQ: "US",
@@ -94,6 +97,24 @@ document.addEventListener("DOMContentLoaded", function() {
 
   /* ============================ Browse hub ========================= */
   function initBrowse() {
+  async function initBrowse() {
+    // Fetch countries from an API instead of hardcoding them.
+    await loadMarketCountries();
+
+    // Set the default country from the user's profile, if available.
+    const profile = Finora.getProfile();
+    if (profile && profile.country) {
+      const userCountry = findCountryByCode(profile.country);
+      if (userCountry) {
+        activeCountryCode = userCountry.code;
+        browseCountryEl.value = countryLabel(userCountry);
+      }
+    } else {
+      // Default to Worldwide if no country is set in profile.
+      browseCountryEl.value = "🌐 Worldwide";
+      }
+    }
+
     browseSearchEl.addEventListener("input", handleBrowseSearch);
     browseSearchEl.addEventListener("focus", handleBrowseSearch);
     browseCountryEl.addEventListener("input", handleCountrySearch);
@@ -107,6 +128,29 @@ document.addEventListener("DOMContentLoaded", function() {
     loadIndices();
     loadTrending();
     loadMovers();
+  }
+
+  /**
+   * Fetches a list of countries from a public API to populate the country filter.
+   */
+  async function loadMarketCountries() {
+    // Start with our special "Worldwide" option.
+    MARKET_COUNTRIES = [{ code: "WW", name: "Worldwide", flag: "🌐" }];
+    try {
+      const response = await fetch("https://restcountries.com/v3.1/all?fields=name,cca2,flag");
+      const data = await response.json();
+      const countries = data
+        .map(c => ({
+          code: c.cca2,
+          name: c.name.common,
+          flag: c.flag
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically
+      MARKET_COUNTRIES.push(...countries);
+    } catch (error) {
+      console.error("Failed to load country list:", error);
+      // The app will still work with just the "Worldwide" option.
+    }
   }
 
   function findCountryByCode(code) {
@@ -134,13 +178,21 @@ document.addEventListener("DOMContentLoaded", function() {
     var q = browseCountryEl.value.trim().toLowerCase();
     clearTimeout(countrySearchTimer);
 
+    // When the input is cleared, reset to Worldwide view.
     if (!q) {
       browseCountryResultsEl.classList.add("d-none");
       browseCountryResultsEl.innerHTML = "";
-      if (activeCountryCode) {
+      if (activeCountryCode !== "") {
         activeCountryCode = "";
+        browseCountryEl.value = "🌐 Worldwide";
         reloadBrowseData();
       }
+      return;
+    }
+
+    // Don't search if the input already says "Worldwide".
+    if (q === "🌐 worldwide") {
+      browseCountryResultsEl.classList.add("d-none");
       return;
     }
 
@@ -181,7 +233,14 @@ document.addEventListener("DOMContentLoaded", function() {
           var code = btn.getAttribute("data-country");
           var country = findCountryByCode(code);
           if (!country) return;
-          activeCountryCode = code;
+
+          // "WW" is the special code for our Worldwide option.
+          if (code === "WW") {
+            activeCountryCode = "";
+          } else {
+            activeCountryCode = code;
+          }
+
           browseCountryEl.value = countryLabel(country);
           browseCountryResultsEl.classList.add("d-none");
           reloadBrowseData();

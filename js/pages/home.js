@@ -12,12 +12,55 @@ document.addEventListener("DOMContentLoaded", async function() {
   // Get the normalized user profile, which contains name, plan, etc.
   const profile = Finora.getProfile();
 
+  checkAndSetLocation(profile);
+
   renderGreeting(profile);
   renderWatchlistStats(profile);
   loadPortfolioStat(profile);
   loadTrendingPreview();
   loadWatchlistPreview(profile);
   loadIndicesPreview();
+
+  /**
+   * Checks if the user's country is set, and if not, prompts for geolocation
+   * to set it automatically. This is a one-time operation.
+   * @param {object} profile The user's profile object.
+   */
+  function checkAndSetLocation(profile) {
+    const askedForLocation = localStorage.getItem("finora_location_prompted");
+
+    // Only ask if country isn't set and we haven't prompted before.
+    if (profile && !profile.country && !askedForLocation) {
+      localStorage.setItem("finora_location_prompted", "true"); // Ask only once
+
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            // On success, use a reverse geocoding API to get the country.
+            // NOTE: This example uses a free public API. A production app
+            // should use a robust service with an API key (e.g., Google, Mapbox).
+            try {
+              const { latitude, longitude } = position.coords;
+              const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+              const data = await response.json();
+
+              if (data && data.address && data.address.country_code) {
+                const countryCode = data.address.country_code.toUpperCase();
+                await Finora.updateProfile({ country: countryCode });
+                Finora.toast(`Location set to ${countryCode}. You can change this in your profile.`, "info");
+              }
+            } catch (error) {
+              console.error("Reverse geocoding failed:", error);
+            }
+          },
+          (error) => {
+            // User denied permission or an error occurred. Do nothing.
+            console.warn(`Geolocation error (${error.code}): ${error.message}`);
+          }
+        );
+      }
+    }
+  }
 
   /**
    * Personalizes the dashboard greeting with the user's first name.
