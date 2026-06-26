@@ -16,28 +16,6 @@ document.addEventListener("DOMContentLoaded", async function() {
   var browseCountryEl = document.getElementById("browseCountry");
   var browseCountryResultsEl = document.getElementById("browseCountryResults");
 
-  var MARKET_COUNTRIES = [
-    { code: "WW", name: "Worldwide", flag: "🌐" },
-    { code: "US", name: "United States", flag: "\uD83C\uDDFA\uD83C\uDDF8" },
-    { code: "GB", name: "United Kingdom", flag: "\uD83C\uDDEC\uD83C\uDDE7" },
-    { code: "DE", name: "Germany", flag: "\uD83C\uDDE9\uD83C\uDDEA" },
-    { code: "CA", name: "Canada", flag: "\uD83C\uDDE8\uD83C\uDDE6" },
-    { code: "AU", name: "Australia", flag: "\uD83C\uDDE6\uD83C\uDDFA" },
-    { code: "FR", name: "France", flag: "\uD83C\uDDEB\uD83C\uDDF7" },
-    { code: "JP", name: "Japan", flag: "\uD83C\uDDEF\uD83C\uDDF5" },
-    { code: "HK", name: "Hong Kong", flag: "\uD83C\uDDED\uD83C\uDDF0" },
-    { code: "IN", name: "India", flag: "\uD83C\uDDEE\uD83C\uDDF3" },
-    { code: "CN", name: "China", flag: "\uD83C\uDDE8\uD83C\uDDF3" },
-    { code: "KR", name: "South Korea", flag: "\uD83C\uDDF0\uD83C\uDDF7" },
-    { code: "SG", name: "Singapore", flag: "\uD83C\uDDF8\uD83C\uDDEC" },
-    { code: "IT", name: "Italy", flag: "\uD83C\uDDEE\uD83C\uDDF9" },
-    { code: "ES", name: "Spain", flag: "\uD83C\uDDEA\uD83C\uDDF8" },
-    { code: "NL", name: "Netherlands", flag: "\uD83C\uDDF3\uD83C\uDDF1" },
-    { code: "CH", name: "Switzerland", flag: "\uD83C\uDDE8\uD83C\uDDED" },
-    { code: "SE", name: "Sweden", flag: "\uD83C\uDDF8\uD83C\uDDEA" },
-    { code: "BR", name: "Brazil", flag: "\uD83C\uDDE7\uD83C\uDDF7" },
-    { code: "MX", name: "Mexico", flag: "\uD83C\uDDF2\uD83C\uDDFD" },
-  ];
   var MARKET_COUNTRIES = [];
 
   var EXCHANGE_COUNTRY = {
@@ -96,7 +74,6 @@ document.addEventListener("DOMContentLoaded", async function() {
   }
 
   /* ============================ Browse hub ========================= */
-  function initBrowse() {
   async function initBrowse() {
     // Fetch countries from an API instead of hardcoding them.
     await loadMarketCountries();
@@ -112,7 +89,6 @@ document.addEventListener("DOMContentLoaded", async function() {
     } else {
       // Default to Worldwide if no country is set in profile.
       browseCountryEl.value = "🌐 Worldwide";
-      }
     }
 
     browseSearchEl.addEventListener("input", handleBrowseSearch);
@@ -166,7 +142,29 @@ document.addEventListener("DOMContentLoaded", async function() {
 
   function stockCountry(stock) {
     var exchange = (stock.exchange || "").toUpperCase();
-    return EXCHANGE_COUNTRY[exchange] || "US";
+    if (EXCHANGE_COUNTRY[exchange]) {
+      return EXCHANGE_COUNTRY[exchange];
+    }
+
+    // Fallback for symbols from search results that include a country suffix.
+    const symbol = (stock.symbol || "").toUpperCase();
+    const parts = symbol.split('.');
+    if (parts.length > 1) {
+      const suffix = parts[parts.length - 1];
+      // This is a simplified mapping. A real-world app might need a more
+      // comprehensive map of exchange suffixes to country codes.
+      const suffixToCountry = {
+        DE: "DE", // Germany (.DE)
+        L: "GB",  // London (.L)
+        PA: "FR", // Paris (.PA)
+        AS: "NL", // Amsterdam (.AS)
+        TO: "CA", // Toronto (.TO)
+        AX: "AU", // Australia (.AX)
+      };
+      if (suffixToCountry[suffix]) return suffixToCountry[suffix];
+    }
+
+    return null;
   }
 
   function reloadBrowseData() {
@@ -326,7 +324,7 @@ document.addEventListener("DOMContentLoaded", async function() {
       browseResultsEl.innerHTML = results
         .map(function(c) {
           return `<button type="button" class="market-search-result" data-pick="${c.symbol}">
-              ${Finora.tickerAvatar(c.symbol, { size: "sm", color: c.color })}
+              ${Finora.tickerAvatar(c, { size: "sm" })}
               <span class="min-w-0">
                 <span class="d-block fw-semibold text-white text-truncate">${c.symbol}</span>
                 <span class="d-block text-muted-2 small text-truncate">${c.name || ""}</span>
@@ -382,10 +380,9 @@ document.addEventListener("DOMContentLoaded", async function() {
     var body = document.getElementById("trendingBody");
     if (!body) return;
     try {
-      var stocks = await FinoraAPI.getTrending();
-      if (activeCountryCode) {
-        stocks = stocks.filter(function(s) { return stockCountry(s) === activeCountryCode; });
-      }
+      // Use top gainers as the source for the "trending" table, as this API call
+      // is already country-aware. This fixes the country filter functionality.
+      var stocks = await FinoraAPI.getGainers(10, activeCountryCode || "");
       if (!stocks.length) { body.innerHTML = Finora.emptyRow(6, activeCountryCode ? "No trending stocks for this market." : Finora.API_UNAVAILABLE_MSG); return; }
       body.innerHTML = stocks
         .map(function(s, i) {
@@ -393,7 +390,7 @@ document.addEventListener("DOMContentLoaded", async function() {
           return `<tr class="trending-row" data-symbol="${s.symbol}">
               <td>
                 <div class="d-flex align-items-center gap-3">
-                  ${Finora.tickerAvatar(s.symbol, { color: s.color })}
+                  ${Finora.tickerAvatar(s)}
                   <div>
                     <div class="fw-bold text-white">${s.symbol}</div>
                     <div class="text-muted-2 small">${s.name || ""}</div>
@@ -450,7 +447,7 @@ document.addEventListener("DOMContentLoaded", async function() {
   function renderMoverItem(stock, isGainer) {
     var sign = isGainer ? "+" : "";
     return `<button type="button" class="market-mover-item" data-symbol="${stock.symbol}">
-        ${Finora.tickerAvatar(stock.symbol, { size: "sm" })}
+        ${Finora.tickerAvatar(stock, { size: "sm" })}
         <span class="flex-grow-1 min-w-0 text-start">
           <span class="d-block text-white text-truncate fw-medium">${stock.name}</span>
           <span class="market-mover-ticker">${stock.symbol}</span>
@@ -537,7 +534,7 @@ document.addEventListener("DOMContentLoaded", async function() {
       <div class="card-finora p-4 mb-4">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
           <div class="d-flex align-items-center gap-3">
-            ${Finora.tickerAvatar(s.symbol, { size: "lg", color: s.color })}
+            ${Finora.tickerAvatar(s, { size: "lg" })}
             <div>
               <h4 class="fw-bold mb-0">${s.name}</h4>
               <div class="text-muted-2 small">${s.exchange || ""} - ${s.symbol}${s.sector ? " - " + s.sector : ""}</div>

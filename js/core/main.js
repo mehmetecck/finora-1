@@ -149,11 +149,13 @@ var Finora = (function() {
       if (!password || password.length < 6) {
         return { ok: false, code: "auth/weak-password", error: mapAuthError("auth/weak-password") };
       }
-      users.push({
+      var newUser = {
         uid: "local-" + Date.now(), name: name, email: email, password: password,
-        plan: "Free", balance: 0, currency: "USD", joined: new Date().toISOString(),
-      });
+        joined: new Date().toISOString(),
+      };
+      users.push(newUser);
       saveUsers(users);
+      setExtras(newUser.uid, { plan: "Free", balance: 0, currency: "USD" });
       // Match Firebase flow: do NOT auto sign-in; user logs in next.
       return { ok: true };
     }
@@ -189,11 +191,12 @@ var Finora = (function() {
       return { ok: true };
     }
 
-    function updateUser(patch) {
+    function updateUser(patch) { // Only for name/email on the core user object
       var users = getUsers();
       var i = users.findIndex(function(u) { return u.uid === getSessionUid(); });
       if (i === -1) return null;
-      users[i] = Object.assign({}, users[i], patch);
+      if (patch.name) users[i].name = patch.name;
+      if (patch.email) users[i].email = patch.email;
       saveUsers(users);
       return users[i];
     }
@@ -426,11 +429,15 @@ var Finora = (function() {
     if (!currentUser) return null;
     if (!USE_FIREBASE) {
       var u = currentUser;
+      var extras = getExtras(u.uid);
       return {
         uid: u.uid, name: u.name, email: u.email, joined: u.joined,
-        plan: normalizePlan(u.plan), balance: u.balance != null ? u.balance : 0,
-        currency: normalizeCurrency(u.currency),
-        phone: u.phone || "", country: u.country || "", bio: u.bio || "",
+        plan: normalizePlan(extras.plan),
+        balance: extras.balance != null ? extras.balance : 0,
+        currency: normalizeCurrency(extras.currency),
+        phone: extras.phone || "",
+        country: extras.country || "",
+        bio: extras.bio || "",
       };
     }
     var extras = getExtras(currentUser.uid);
@@ -453,7 +460,17 @@ var Finora = (function() {
   async function updateProfile(patch) {
     if (!currentUser) return null;
     if (!USE_FIREBASE) {
-      currentUser = Local.updateUser(patch);
+      if (patch.name || patch.email) {
+        currentUser = Local.updateUser({ name: patch.name, email: patch.email });
+      }
+      var extrasPatch = {};
+      var key;
+      for (key in patch) {
+        if (Object.prototype.hasOwnProperty.call(patch, key) && key !== "name" && key !== "email") {
+          extrasPatch[key] = patch[key];
+        }
+      }
+      if (Object.keys(extrasPatch).length) setExtras(currentUser.uid, extrasPatch);
       renderNavAuth();
       return getProfile();
     }
@@ -555,65 +572,27 @@ var Finora = (function() {
   var COLORS = ["#2563EB", "#7C3AED", "#14B8A6", "#38BDF8", "#22C55E", "#F59E0B", "#EC4899", "#EF4444", "#0D9488", "#A78BFA"];
   function symbolColor(symbol) {
     var h = 0;
-    var i;
-    for (i = 0; i < (symbol || "").length; i++) h = (h * 31 + symbol.charCodeAt(i)) >>> 0;
+    for (var i = 0; i < (symbol || "").length; i++) h = (h * 31 + symbol.charCodeAt(i)) >>> 0;
     return `linear-gradient(135deg, ${COLORS[h % COLORS.length]}, ${COLORS[(h >> 3) % COLORS.length]})`;
-  }
-
-  // Company logos stored in assets/logos. Maps ticker symbol -> image path.
-  var LOGOS = {
-    AAPL: "assets/logos/Apple.png",
-    MSFT: "assets/logos/Microsoft.png",
-    NVDA: "assets/logos/Nvidia_logo.png",
-    GOOGL: "assets/logos/Google.png",
-    AMZN: "assets/logos/Amazon_logo.png",
-    META: "assets/logos/Meta.png",
-    TSLA: "assets/logos/Tesla.png",
-    AMD: "assets/logos/AMD.png",
-    JPM: "assets/logos/jpm.png",
-    V: "assets/logos/Visa.png",
-    MA: "assets/logos/Mastercard.png",
-    NFLX: "assets/logos/netflix.png",
-    DIS: "assets/logos/Disney.png",
-    KO: "assets/logos/cokewirsindinlidi.png",
-    PEP: "assets/logos/Pepsi.png",
-    WMT: "assets/logos/Walmart.png",
-    COST: "assets/logos/Costco.png",
-    NKE: "assets/logos/nike.png",
-    MCD: "assets/logos/McDonald.png",
-    SBUX: "assets/logos/Starbucks.png",
-    BA: "assets/logos/Boeing.png",
-    CAT: "assets/logos/Caterpillar.png",
-    GE: "assets/logos/ge.png",
-    XOM: "assets/logos/Exxon.png",
-    CVX: "assets/logos/Chevron.png",
-    JNJ: "assets/logos/JNJ.png",
-    PFE: "assets/logos/pfizer.png",
-    UNH: "assets/logos/United.png",
-    HD: "assets/logos/THD.png",
-    ORCL: "assets/logos/Oracle.png",
-    IBM: "assets/logos/IBM.png",
-    INTC: "assets/logos/intel.png",
-    CRM: "assets/logos/Salesforce.png",
-    UBER: "assets/logos/uber.png",
-    ABNB: "assets/logos/airbnb.png",
-    SHOP: "assets/logos/shopify.png",
-  };
-
-  function logoFor(symbol) {
-    return LOGOS[(symbol || "").trim().toUpperCase()] || null;
   }
 
   // Returns the markup for a ticker badge: the company logo when available,
   // otherwise a colored fallback showing the symbol text.
-  function tickerAvatar(symbol, opts) {
-    if (!opts) opts = {};
+  function tickerAvatar(company, opts) {
+    if (!company) return "";
+    opts = opts || {};
+    var symbol = company.symbol || "";
     var size = opts.size != null ? opts.size : "";
     var color = opts.color;
     var className = opts.className != null ? opts.className : "ticker-avatar";
     var sym = (symbol || "").trim().toUpperCase();
     var cls = [className, size].filter(function(part) { return part; }).join(" ");
-    var logo = logoFor(sym);
+
+    // Use a logo API if the company's website is known.
+    // NOTE: This assumes your FinoraAPI now returns a `website` property (e.g., "apple.com")
+    // for each company. We're using Clearbit's free logo API as an example.
+    var logo = company.website ? `https://logo.clearbit.com/${company.website}` : null;
+
     if (logo) {
       return `<span class="${cls} has-logo"><img src="${logo}" alt="${sym}" loading="lazy" onerror="this.parentElement.classList.remove('has-logo');this.parentElement.textContent='${sym}';this.parentElement.style.background='${color || symbolColor(sym)}'"></span>`;
     }

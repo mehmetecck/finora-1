@@ -34,49 +34,50 @@ const FinoraAPI = (() => {
   ];
 
   const COMPANY_CATALOG = [
-    company("AAPL", "Apple Inc.", "NASDAQ", "Technology"),
-    company("MSFT", "Microsoft Corporation", "NASDAQ", "Technology"),
-    company("NVDA", "NVIDIA Corporation", "NASDAQ", "Technology"),
-    company("GOOGL", "Alphabet Inc.", "NASDAQ", "Communication Services"),
-    company("AMZN", "Amazon.com, Inc.", "NASDAQ", "Consumer Cyclical"),
-    company("META", "Meta Platforms, Inc.", "NASDAQ", "Communication Services"),
-    company("TSLA", "Tesla, Inc.", "NASDAQ", "Consumer Cyclical"),
-    company("AMD", "Advanced Micro Devices, Inc.", "NASDAQ", "Technology"),
-    company("JPM", "JPMorgan Chase & Co.", "NYSE", "Financial Services"),
-    company("V", "Visa Inc.", "NYSE", "Financial Services"),
-    company("MA", "Mastercard Incorporated", "NYSE", "Financial Services"),
-    company("NFLX", "Netflix, Inc.", "NASDAQ", "Communication Services"),
-    company("DIS", "The Walt Disney Company", "NYSE", "Communication Services"),
-    company("KO", "The Coca-Cola Company", "NYSE", "Consumer Defensive"),
-    company("PEP", "PepsiCo, Inc.", "NASDAQ", "Consumer Defensive"),
-    company("WMT", "Walmart Inc.", "NYSE", "Consumer Defensive"),
-    company("COST", "Costco Wholesale Corporation", "NASDAQ", "Consumer Defensive"),
-    company("NKE", "NIKE, Inc.", "NYSE", "Consumer Cyclical"),
-    company("MCD", "McDonald's Corporation", "NYSE", "Consumer Cyclical"),
-    company("SBUX", "Starbucks Corporation", "NASDAQ", "Consumer Cyclical"),
-    company("BA", "The Boeing Company", "NYSE", "Industrials"),
-    company("CAT", "Caterpillar Inc.", "NYSE", "Industrials"),
-    company("GE", "GE Aerospace", "NYSE", "Industrials"),
-    company("XOM", "Exxon Mobil Corporation", "NYSE", "Energy"),
-    company("CVX", "Chevron Corporation", "NYSE", "Energy"),
-    company("JNJ", "Johnson & Johnson", "NYSE", "Healthcare"),
-    company("PFE", "Pfizer Inc.", "NYSE", "Healthcare"),
-    company("UNH", "UnitedHealth Group Incorporated", "NYSE", "Healthcare"),
-    company("HD", "The Home Depot, Inc.", "NYSE", "Consumer Cyclical"),
-    company("ORCL", "Oracle Corporation", "NYSE", "Technology"),
-    company("IBM", "International Business Machines Corporation", "NYSE", "Technology"),
-    company("INTC", "Intel Corporation", "NASDAQ", "Technology"),
-    company("CRM", "Salesforce, Inc.", "NYSE", "Technology"),
-    company("UBER", "Uber Technologies, Inc.", "NYSE", "Technology"),
-    company("ABNB", "Airbnb, Inc.", "NASDAQ", "Consumer Cyclical"),
-    company("SHOP", "Shopify Inc.", "NYSE", "Technology"),
+    company("AAPL", "Apple Inc.", "NASDAQ", "Technology", "apple.com"),
+    company("MSFT", "Microsoft Corporation", "NASDAQ", "Technology", "microsoft.com"),
+    company("NVDA", "NVIDIA Corporation", "NASDAQ", "Technology", "nvidia.com"),
+    company("GOOGL", "Alphabet Inc.", "NASDAQ", "Communication Services", "google.com"),
+    company("AMZN", "Amazon.com, Inc.", "NASDAQ", "Consumer Cyclical", "amazon.com"),
+    company("META", "Meta Platforms, Inc.", "NASDAQ", "Communication Services", "meta.com"),
+    company("TSLA", "Tesla, Inc.", "NASDAQ", "Consumer Cyclical", "tesla.com"),
+    company("AMD", "Advanced Micro Devices, Inc.", "NASDAQ", "Technology", "amd.com"),
+    company("JPM", "JPMorgan Chase & Co.", "NYSE", "Financial Services", "jpmorganchase.com"),
+    company("V", "Visa Inc.", "NYSE", "Financial Services", "visa.com"),
+    company("MA", "Mastercard Incorporated", "NYSE", "Financial Services", "mastercard.com"),
+    company("NFLX", "Netflix, Inc.", "NASDAQ", "Communication Services", "netflix.com"),
+    company("DIS", "The Walt Disney Company", "NYSE", "Communication Services", "thewaltdisneycompany.com"),
+    company("KO", "The Coca-Cola Company", "NYSE", "Consumer Defensive", "coca-colacompany.com"),
+    company("PEP", "PepsiCo, Inc.", "NASDAQ", "Consumer Defensive", "pepsico.com"),
+    company("WMT", "Walmart Inc.", "NYSE", "Consumer Defensive", "walmart.com"),
+    company("COST", "Costco Wholesale Corporation", "NASDAQ", "Consumer Defensive", "costco.com"),
+    company("NKE", "NIKE, Inc.", "NYSE", "Consumer Cyclical", "nike.com"),
+    company("MCD", "McDonald's Corporation", "NYSE", "Consumer Cyclical", "mcdonalds.com"),
+    company("SBUX", "Starbucks Corporation", "NASDAQ", "Consumer Cyclical", "starbucks.com"),
+    company("BA", "The Boeing Company", "NYSE", "Industrials", "boeing.com"),
+    company("CAT", "Caterpillar Inc.", "NYSE", "Industrials", "caterpillar.com"),
+    company("GE", "GE Aerospace", "NYSE", "Industrials", "geaerospace.com"),
+    company("XOM", "Exxon Mobil Corporation", "NYSE", "Energy", "exxonmobil.com"),
+    company("CVX", "Chevron Corporation", "NYSE", "Energy", "chevron.com"),
+    company("JNJ", "Johnson & Johnson", "NYSE", "Healthcare", "jnj.com"),
+    company("PFE", "Pfizer Inc.", "NYSE", "Healthcare", "pfizer.com"),
+    company("UNH", "UnitedHealth Group Incorporated", "NYSE", "Healthcare", "unitedhealthgroup.com"),
+    company("HD", "The Home Depot, Inc.", "NYSE", "Consumer Cyclical", "homedepot.com"),
+    company("ORCL", "Oracle Corporation", "NYSE", "Technology", "oracle.com"),
+    company("IBM", "International Business Machines Corporation", "NYSE", "Technology", "ibm.com"),
+    company("INTC", "Intel Corporation", "NASDAQ", "Technology", "intel.com"),
+    company("CRM", "Salesforce, Inc.", "NYSE", "Technology", "salesforce.com"),
+    company("UBER", "Uber Technologies, Inc.", "NYSE", "Technology", "uber.com"),
+    company("ABNB", "Airbnb, Inc.", "NASDAQ", "Consumer Cyclical", "airbnb.com"),
+    company("SHOP", "Shopify Inc.", "NYSE", "Technology", "shopify.com"),
+    company("RBLX", "Roblox Corporation", "NYSE", "Communication Services", "roblox.com"),
   ];
 
   const cache = new Map();
   const bySymbol = new Map(COMPANY_CATALOG.map((item) => [item.symbol, item]));
 
-  function company(symbol, name, exchange, sector) {
-    return { symbol, name, exchange, sector };
+  function company(symbol, name, exchange, sector, website) {
+    return { symbol, name, exchange, sector, website };
   }
 
   function hasFinnhubKey() {
@@ -210,6 +211,7 @@ const FinoraAPI = (() => {
       price,
       change: percentChange,
       exchange: meta.exchange,
+      website: meta.website,
       sector: meta.sector || "",
       about: `${meta.name || symbol} is listed${meta.exchange ? ` on ${meta.exchange}` : ""}${meta.sector ? ` in the ${meta.sector} sector` : ""}.`,
       open: round(Number(data.o)),
@@ -246,6 +248,7 @@ const FinoraAPI = (() => {
       price,
       change: changePct(price, prevClose),
       exchange,
+      website: meta.website,
       sector,
       about: `${meta.name || symbol} is listed${exchange ? ` on ${exchange}` : ""}${sector ? ` in the ${sector} sector` : ""}.`,
       open: round(Number(latest.open)),
@@ -337,6 +340,7 @@ const FinoraAPI = (() => {
       price: round(Number(row.last)),
       change: round(Number(row.percent_change)),
       exchange: row.exchange || meta.exchange,
+      website: meta.website,
       sector: meta.sector || "",
     };
   }
@@ -370,7 +374,7 @@ const FinoraAPI = (() => {
     const url = new URL(TWELVE_BASE + "/market_movers/stocks");
     url.searchParams.set("direction", direction);
     url.searchParams.set("outputsize", String(limit));
-    url.searchParams.set("country", country || "US");
+    url.searchParams.set("country", country);
     url.searchParams.set("apikey", TWELVE_DATA_API_KEY);
     const data = await fetchJson(url.toString());
     return (data.values || [])
@@ -400,13 +404,16 @@ const FinoraAPI = (() => {
     if (cached && cached.length) return cached;
 
     let movers = [];
-    if (hasTwelveKey()) {
+    // The Twelve Data `market_movers` endpoint requires a country.
+    // If a specific country is requested, we use the API.
+    if (country && hasTwelveKey()) {
       try {
         movers = await fetchMarketMovers(direction, limit, country);
       } catch {
         /* fall back to catalog quotes */
       }
     }
+    // For "Worldwide" (country=""), or if the API fails, we use our own catalog.
     if (!movers.length) movers = await moversFromCatalog(direction, limit);
     if (!movers.length) throw new Error(API_UNAVAILABLE_MSG);
 
@@ -464,6 +471,7 @@ const FinoraAPI = (() => {
               symbol,
               name: item.description || meta.name || symbol,
               exchange: meta.exchange,
+              website: meta.website,
               sector: meta.sector,
               price: null,
               change: null,

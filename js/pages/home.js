@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", async function() {
   renderGreeting(profile);
   renderWatchlistStats(profile);
   loadPortfolioStat(profile);
-  loadTrendingPreview();
+  loadTrendingPreview(profile);
   loadWatchlistPreview(profile);
   loadIndicesPreview();
 
@@ -109,11 +109,15 @@ document.addEventListener("DOMContentLoaded", async function() {
   /**
    * Fetches trending stocks and populates the "Market snapshot" card.
    */
-  async function loadTrendingPreview() {
+  async function loadTrendingPreview(profile) {
     const wrap = document.getElementById("dashTrending");
     const statEl = document.getElementById("statTrending");
+    // Use the user's preferred country, or default to worldwide.
+    const countryCode = (profile && profile.country) ? profile.country : "";
+
     try {
-      const stocks = await FinoraAPI.getTrending();
+      // Use getGainers, which is country-aware, to show relevant trending stocks.
+      const stocks = await FinoraAPI.getGainers(5, countryCode);
       if (!stocks.length) throw new Error("empty");
       statEl.textContent = String(stocks.length);
       wrap.innerHTML = stocks
@@ -121,7 +125,7 @@ document.addEventListener("DOMContentLoaded", async function() {
         .map((s) => {
           const up = (s.change || 0) >= 0;
           return `<a href="market.html?symbol=${s.symbol}" class="dash-list-item">
-            ${Finora.tickerAvatar(s.symbol, { size: "sm", color: s.color })}
+            ${Finora.tickerAvatar(s, { size: "sm" })}
             <span class="flex-grow-1 min-w-0">
               <span class="d-block fw-semibold text-white text-truncate">${s.symbol}</span>
               <span class="d-block text-muted-2 small text-truncate">${s.name || ""}</span>
@@ -170,7 +174,7 @@ document.addEventListener("DOMContentLoaded", async function() {
         const up = (s.change || 0) >= 0;
         const hasChange = s.change != null && Number.isFinite(s.change);
         return `<a href="watchlist.html?symbol=${encodeURIComponent(s.symbol)}" class="dash-list-item">
-          ${Finora.tickerAvatar(s.symbol, { size: "sm" })}
+          ${Finora.tickerAvatar(s, { size: "sm" })}
           <span class="flex-grow-1 min-w-0">
             <span class="d-block fw-semibold text-white text-truncate">${s.symbol}</span>
             <span class="d-block text-muted-2 small text-truncate">${s.name}</span>
