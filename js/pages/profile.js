@@ -51,9 +51,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const totalReturn = totalValue - costBasis;
     const totalReturnPct = costBasis ? (totalReturn / costBasis) * 100 : 0;
 
-    // Note: "Today's P/L" is not available from the current API and is faked here.
-    const todayPL = marketValue * 0.0192; // Fake 1.92% gain
-    const todayPLPct = marketValue ? (todayPL / (marketValue - todayPL)) * 100 : 0;
+    // "Today's P/L" would be calculated from daily changes in holdings.
+    // The current API stubs do not provide this data, so we show an unavailable state.
+    const todayPL = 0;
 
     document.getElementById("statPortfolio").textContent = Finora.fmtMoney(totalValue);
     document.getElementById("statHoldings").textContent = String(holdings.length);
@@ -61,11 +61,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     const todayPLBadge = document.getElementById("statTodayPLBadge");
     const todayPLValue = document.getElementById("statTodayPL");
-    todayPLValue.textContent = `${todayPL >= 0 ? "+" : ""}${Finora.fmtMoney(todayPL)}`;
-    todayPLValue.classList.toggle("text-bull", todayPL >= 0);
-    todayPLValue.classList.toggle("text-bear", todayPL < 0);
-    todayPLBadge.innerHTML = `<i class="bi bi-caret-${todayPL >= 0 ? "up" : "down"}-fill"></i> ${todayPLPct.toFixed(2)}%`;
-    todayPLBadge.className = `badge mt-1 ${todayPL >= 0 ? "badge-bull" : "badge-bear"}`;
+    todayPLValue.textContent = "—";
+    todayPLBadge.classList.add("d-none");
 
     const portfolioBadge = document.getElementById("statPortfolioBadge");
     portfolioBadge.innerHTML = `<i class="bi bi-caret-${totalReturn >= 0 ? "up" : "down"}-fill"></i> ${totalReturnPct.toFixed(2)}% total return`;

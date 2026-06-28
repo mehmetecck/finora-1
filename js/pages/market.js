@@ -299,6 +299,7 @@ document.addEventListener("DOMContentLoaded", async function() {
       var stocks = result.data;
 
       if (!stocks || !stocks.length) { tape.classList.add("d-none"); return; }
+      tape.classList.remove("d-none");
       if (stocks.every(function(s) { return s.price == null; })) { tape.classList.add("d-none"); return; }
       function item(s) {
         var up = s.change >= 0;
@@ -339,8 +340,9 @@ document.addEventListener("DOMContentLoaded", async function() {
     searchTimer = setTimeout(async function() {
       var local = [];
       try {
-        var trending = await FinoraAPI.getTrending();
-        local = trending.filter(function(c) {
+        // getTrending returns an object { data, fallback }, so we need the data property.
+        var trendingResult = await FinoraAPI.getTrending();
+        local = (trendingResult.data || []).filter(function(c) {
           return c.symbol.toLowerCase().includes(q) || (c.name || "").toLowerCase().includes(q);
         });
       } catch (err) {
@@ -699,7 +701,7 @@ document.addEventListener("DOMContentLoaded", async function() {
     chartRange = "1M";
     drawChart(s.symbol, chartRange);
     loadHistory(s.symbol);
-    loadNews(s.symbol);
+    loadNews(s);
 
     detailEl.querySelectorAll("#rangeBtns [data-range]").forEach(function(btn) {
       btn.addEventListener("click", function() {
@@ -808,11 +810,11 @@ document.addEventListener("DOMContentLoaded", async function() {
       .join("");
   }
 
-  async function loadNews(symbol) {
+  async function loadNews(stock) {
     var wrap = document.getElementById("newsList");
     var news = [];
     try {
-      news = await FinoraAPI.getNews(symbol);
+      news = await FinoraAPI.getNews(stock.symbol);
     } catch (err) {
       wrap.innerHTML = Finora.apiUnavailableState("bi-newspaper");
       return;
@@ -820,8 +822,13 @@ document.addEventListener("DOMContentLoaded", async function() {
     if (!news.length) { wrap.innerHTML = Finora.emptyState("No news available", "bi-newspaper"); return; }
     wrap.innerHTML = news
       .map(function(n) {
+        const newsSource = {
+          website: n.url ? new URL(n.url).hostname : null,
+          // Use the source name for the avatar fallback text.
+          symbol: Finora.initials(n.source),
+        };
         return `<a href="${n.url || "#"}" class="news-item d-flex gap-3 text-decoration-none" target="_blank" rel="noopener">
-          <div class="news-tag">${n.tag || "News"}</div>
+          ${Finora.tickerAvatar(newsSource, { size: "sm" })}
           <div class="min-w-0">
             <div class="fw-semibold text-white text-truncate">${n.title}</div>
             <div class="text-muted-2 small text-truncate">${n.source || ""}${n.time ? " - " + n.time : ""}</div>
