@@ -32,7 +32,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("buyingPower").textContent = Finora.fmtMoney(user.balance);
   document.getElementById("statBuying").textContent = Finora.fmtMoney(user.balance);
 
-  document.querySelector("[data-logout-btn]").addEventListener("click", Finora.logout);
+  document.querySelectorAll("[data-logout-btn]").forEach(btn => {
+    btn.addEventListener("click", Finora.logout);
+  });
 
   /* -------------- Portfolio overview (from API) ------------------- */
   loadOverview(fbUser.uid);

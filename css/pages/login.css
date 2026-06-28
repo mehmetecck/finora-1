@@ -26,5 +26,5 @@
 .password-meter { height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; }
 .password-meter span { display: block; height: 100%; width: 0; transition: width var(--transition), background var(--transition); }
 
-.btn-social { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary); }
+.btn-social { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-primary); }
 .btn-social:hover { border-color: var(--brand); color: var(--text-primary); }

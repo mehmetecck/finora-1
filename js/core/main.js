@@ -751,7 +751,24 @@ var Finora = (function() {
     bindDropdownLinks();
     var path = currentPath();
     document.querySelectorAll(".navbar .nav-link").forEach(function(link) {
-      if (link.getAttribute("href") === path) link.classList.add("active");
+      if (link.getAttribute("href") === path) {
+        link.classList.add("active");
+      }
+
+      // Add a click listener to guard protected routes for logged-out users.
+      link.addEventListener("click", function(e) {
+        var href = link.getAttribute("href");
+        if (!href) return;
+
+        var linkPath = href.split("/").pop() || "index.html";
+        var isProtected = !isPublicPage(linkPath);
+
+        if (!getProfile() && isProtected) {
+          e.preventDefault();
+          // Redirect to login, passing the intended destination.
+          window.location.href = "login.html?next=" + encodeURIComponent(href);
+        }
+      });
     });
   }
 
