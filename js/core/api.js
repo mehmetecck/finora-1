@@ -138,7 +138,12 @@ const FinoraAPI = (() => {
       const res = await fetch(url, { signal: controller ? controller.signal : undefined });
       if (!res.ok) throw new Error(API_UNAVAILABLE_MSG);
       const data = await res.json();
-      if (data.status === "error" || data.code) throw new Error(API_UNAVAILABLE_MSG);
+      if (data.status === "error" || data.code) {
+        if (data.message && (data.message.includes("credit limit") || data.message.includes("token"))) {
+          console.error("FinoraAPI Error: Ran out of API credits/tokens.", { url: url, response: data });
+        }
+        throw new Error(API_UNAVAILABLE_MSG);
+      }
       return data;
     } catch (err) {
       if (err && err.message === API_UNAVAILABLE_MSG) throw err;
@@ -309,26 +314,9 @@ const FinoraAPI = (() => {
     return out;
   }
 
-  async function getTrending() {
-    if (!hasFinnhubKey()) {
-      return DEFAULT_SYMBOLS.map(function (symbol) {
-        return { ...metaFor(symbol), price: null, change: null, history: [] };
-      });
-    }
-    var items = await mapWithLimit(DEFAULT_SYMBOLS, 4, async function (symbol) {
-      try {
-        return await getStock(symbol);
-      } catch (err) {
-        return { ...metaFor(symbol), price: null, change: null, history: [] };
-      }
-    });
-    if (items.length && items.every(function (item) { return item.price == null; })) {
-      throw new Error(API_UNAVAILABLE_MSG);
-    }
-    if (items.length) return items;
-    return DEFAULT_SYMBOLS.map(function (symbol) {
-      return { ...metaFor(symbol), price: null, change: null, history: [] };
-    });
+  async function getTrending(country = "") {
+    // "Trending" is now defined as the top 10 gainers for the given market.
+    return getGainers(10, country);
   }
 
   function mapMover(row) {
@@ -350,19 +338,27 @@ const FinoraAPI = (() => {
       const raw = localStorage.getItem(MOVERS_STORAGE_KEY);
       if (!raw) return null;
       const all = JSON.parse(raw);
-      const entry = all[direction + ":" + limit + ":" + (country || "WW")];
-      if (!entry || !Array.isArray(entry.data) || Date.now() - entry.time > MOVERS_CACHE_TTL) return null;
-      return entry.data;
+      const key = direction + ":" + limit + ":" + (country || "WW");
+      const entry = all[key];
+      // The entry must be an object with a `data` array and a `time`.
+      if (!entry || !entry.data || !Array.isArray(entry.data) || Date.now() - entry.time > MOVERS_CACHE_TTL) return null;
+      // The `fallback` property is optional for backward compatibility.
+      return { data: entry.data, fallback: !!entry.fallback };
     } catch {
       return null;
     }
   }
 
-  function writeStoredMovers(direction, limit, country, data) {
+  function writeStoredMovers(direction, limit, country, result) {
     try {
       const raw = localStorage.getItem(MOVERS_STORAGE_KEY);
       const all = raw ? JSON.parse(raw) : {};
-      all[direction + ":" + limit + ":" + (country || "WW")] = { time: Date.now(), data: data };
+      const key = direction + ":" + limit + ":" + (country || "WW");
+      all[key] = {
+        time: Date.now(),
+        data: result.data,
+        fallback: result.fallback,
+      };
       localStorage.setItem(MOVERS_STORAGE_KEY, JSON.stringify(all));
     } catch {
       /* ignore storage errors */
@@ -376,11 +372,13 @@ const FinoraAPI = (() => {
     url.searchParams.set("outputsize", String(limit));
     url.searchParams.set("country", country);
     url.searchParams.set("apikey", TWELVE_DATA_API_KEY);
-    const data = await fetchJson(url.toString());
-    return (data.values || [])
+    const urlString = url.toString();
+    const data = await fetchJson(urlString);
+    const movers = (data.values || [])
       .slice(0, limit)
       .map(mapMover)
       .filter((item) => item.symbol && item.price != null && Number.isFinite(item.change));
+    return { movers, url: urlString };
   }
 
   async function moversFromCatalog(direction, limit) {
@@ -401,24 +399,74 @@ const FinoraAPI = (() => {
 
   async function getMarketMovers(direction, limit = 6, country = "") {
     const cached = readStoredMovers(direction, limit, country);
-    if (cached && cached.length) return cached;
+    if (cached !== null) {
+      if (direction === "gainers") {
+        console.log("Top Gainers Data (from cache):", { country: country || "Worldwide", source: "Cache", url: null, data: cached.data });
+      } else if (direction === "losers") {
+        console.log("Top Losers Data (from cache):", { country: country || "Worldwide", source: "Cache", url: null, data: cached.data });
+      }
+      return cached;
+    }
 
     let movers = [];
-    // The Twelve Data `market_movers` endpoint requires a country.
-    // If a specific country is requested, we use the API.
+    let sourceUrl = null;
+    let sourceDescription = "";
+    let fallback = false;
+
+    // If a country is specified, try the country-specific API first.
     if (country && hasTwelveKey()) {
       try {
-        movers = await fetchMarketMovers(direction, limit, country);
-      } catch {
-        /* fall back to catalog quotes */
+        const result = await fetchMarketMovers(direction, limit, country);
+        movers = result.movers;
+        sourceUrl = result.url;
+        sourceDescription = "Twelve Data API";
+      } catch (err) {
+        // If the country-specific API fails, decide whether to fall back.
+        console.warn(`Could not fetch market movers for country "${country}".`, err);
+        fallback = true;
+
+        // Only fall back to the default (US) catalog if the user explicitly
+        // selected "US". For other countries, we show an empty state.
+        if (country.toUpperCase() === "US") {
+          movers = await moversFromCatalog(direction, limit);
+          sourceDescription = "Internal Catalog (Fallback for US)";
+        } else {
+          // For any other country, a failure means we have no data.
+          // The `movers` array remains empty.
+          sourceDescription = "Twelve Data API (Failed)";
+        }
+      }
+    } else {
+      // This block runs if no country is specified ("Worldwide") OR if the TwelveData key is missing.
+      // We should only fall back to the catalog for "Worldwide" or "US".
+      if (!country || country.toUpperCase() === "US") {
+        movers = await moversFromCatalog(direction, limit);
+        sourceDescription = "Internal Catalog (Finnhub Fallback)";
+        if (country) { // If country was "US" and key was missing, it's a fallback.
+          fallback = true;
+        }
+      } else {
+        // A non-US country was requested, but the key is missing.
+        // Do not fall back to the catalog. `movers` remains empty.
+        fallback = true;
+        sourceDescription = "Twelve Data API (Key missing)";
       }
     }
-    // For "Worldwide" (country=""), or if the API fails, we use our own catalog.
-    if (!movers.length) movers = await moversFromCatalog(direction, limit);
-    if (!movers.length) throw new Error(API_UNAVAILABLE_MSG);
 
-    writeStoredMovers(direction, limit, country, movers);
-    return movers;
+    // Only throw an error if the default "Worldwide" catalog fails to load.
+    // For a specific country, an empty list is a valid result.
+    if (!movers.length && !country) throw new Error(API_UNAVAILABLE_MSG);
+
+    const result = { data: movers, fallback: fallback };
+
+    if (direction === "gainers") {
+      console.log("Top Gainers Data:", { country: country || "Worldwide", source: sourceDescription, url: sourceUrl, data: result.data });
+    } else if (direction === "losers") {
+      console.log("Top Losers Data:", { country: country || "Worldwide", source: sourceDescription, url: sourceUrl, data: result.data });
+    }
+
+    writeStoredMovers(direction, limit, country, result);
+    return result;
   }
 
   async function getGainers(limit = 6, country = "") {

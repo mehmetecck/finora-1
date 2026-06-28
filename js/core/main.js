@@ -17,6 +17,8 @@ var Finora = (function() {
   var USE_FIREBASE = !!window.FIREBASE_CONFIGURED;
   var auth = USE_FIREBASE ? window.firebaseAuth : null;
 
+  var LOGOKIT_API_KEY = "pk_fr8fb356698b780dc974a8";
+
   var EXTRAS_KEY = "finora_profile_extras";
   var LOCAL_USERS = "finora_local_users";
   var LOCAL_SESSION = "finora_local_session";
@@ -588,13 +590,20 @@ var Finora = (function() {
     var sym = (symbol || "").trim().toUpperCase();
     var cls = [className, size].filter(function(part) { return part; }).join(" ");
 
-    // Use a logo API if the company's website is known.
-    // NOTE: This assumes your FinoraAPI now returns a `website` property (e.g., "apple.com")
-    // for each company. We're using Clearbit's free logo API as an example.
-    var logo = company.website ? `https://logo.clearbit.com/${company.website}` : null;
+    // Use Logokit API for company logos.
+    var logo = null;
+    if (company.website) {
+      var logoUrl = new URL(`https://img.logokit.com/${company.website}`);
+      if (LOGOKIT_API_KEY && !LOGOKIT_API_KEY.startsWith("YOUR_")) {
+        logoUrl.searchParams.set("token", LOGOKIT_API_KEY);
+      }
+      logo = logoUrl.toString();
+    }
 
     if (logo) {
-      return `<span class="${cls} has-logo"><img src="${logo}" alt="${sym}" loading="lazy" onerror="this.parentElement.classList.remove('has-logo');this.parentElement.textContent='${sym}';this.parentElement.style.background='${color || symbolColor(sym)}'"></span>`;
+      // The onerror handler reverts the element to its text-based fallback state.
+      const onError = `this.parentElement.classList.remove('has-logo'); this.parentElement.textContent='${sym}'; this.parentElement.style.background='${color || symbolColor(sym)}'; this.remove();`;
+      return `<span class="${cls} has-logo"><img src="${logo}" alt="${sym}" loading="lazy" onerror="${onError}"></span>`;
     }
     return `<span class="${cls}" style="background:${color || symbolColor(sym)}">${sym}</span>`;
   }

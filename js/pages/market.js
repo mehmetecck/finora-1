@@ -54,7 +54,6 @@ document.addEventListener("DOMContentLoaded", async function() {
     initBrowse();
   }
 
-  loadTicker();
 
   function showBrowseView() {
     browseEl.classList.remove("d-none");
@@ -76,25 +75,46 @@ document.addEventListener("DOMContentLoaded", async function() {
   /* ============================ Browse hub ========================= */
   async function initBrowse() {
     // Fetch countries from an API instead of hardcoding them.
+
+    // Inject a placeholder for warnings about API fallbacks.
+    const searchContainer = document.querySelector(".market-search-container");
+    if (searchContainer) {
+      const warningPlaceholder = document.createElement("div");
+      warningPlaceholder.id = "marketWarning";
+      searchContainer.before(warningPlaceholder);
+    }
+
     await loadMarketCountries();
 
     // Set the default country from the user's profile, if available.
     const profile = Finora.getProfile();
+    console.log("Country from profile:", profile ? profile.country : "No profile or country");
     if (profile && profile.country) {
-      const userCountry = findCountryByCode(profile.country);
+      const userCountry = findCountry(profile.country);
       if (userCountry) {
         activeCountryCode = userCountry.code;
         browseCountryEl.value = countryLabel(userCountry);
+      } else {
+        // If the profile country is invalid or not in our list, default to Worldwide.
+        console.warn(`Profile country "${profile.country}" not found in market list. Defaulting to Worldwide.`);
+        activeCountryCode = "";
+        browseCountryEl.value = profile.country;
       }
     } else {
       // Default to Worldwide if no country is set in profile.
+      activeCountryCode = "";
       browseCountryEl.value = "🌐 Worldwide";
     }
+    console.log("Active country code:", activeCountryCode);
 
     browseSearchEl.addEventListener("input", handleBrowseSearch);
     browseSearchEl.addEventListener("focus", handleBrowseSearch);
     browseCountryEl.addEventListener("input", handleCountrySearch);
-    browseCountryEl.addEventListener("focus", handleCountrySearch);
+    browseCountryEl.addEventListener("focus", function() { // On focus, select the text and show the search results.
+      this.select();
+      // Also trigger the search immediately to show the dropdown.
+      handleCountrySearch();
+    });
     document.addEventListener("click", function(e) {
       if (!e.target.closest(".market-search-wrap")) {
         browseResultsEl.classList.add("d-none");
@@ -102,8 +122,10 @@ document.addEventListener("DOMContentLoaded", async function() {
       }
     });
     loadIndices();
+    console.log("Fetching market data for country:", activeCountryCode || "Worldwide");
     loadTrending();
     loadMovers();
+    loadTicker();
   }
 
   /**
@@ -113,15 +135,15 @@ document.addEventListener("DOMContentLoaded", async function() {
     // Start with our special "Worldwide" option.
     MARKET_COUNTRIES = [{ code: "WW", name: "Worldwide", flag: "🌐" }];
     try {
-      const response = await fetch("https://restcountries.com/v3.1/all?fields=name,cca2,flag");
+      const response = await fetch("https://cdn.jsdelivr.net/npm/country-flag-emoji-json@2.0.0/dist/index.json");
       const data = await response.json();
       const countries = data
         .map(c => ({
-          code: c.cca2,
-          name: c.name.common,
-          flag: c.flag
+          code: c.code,
+          name: c.name,
+          flag: c.emoji
         }))
-        .sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically
+      .sort((a, b) => a.name.localeCompare(b.name));
       MARKET_COUNTRIES.push(...countries);
     } catch (error) {
       console.error("Failed to load country list:", error);
@@ -129,9 +151,17 @@ document.addEventListener("DOMContentLoaded", async function() {
     }
   }
 
-  function findCountryByCode(code) {
+  function findCountry(value) {
+    if (!value) return null;
+    const trimmedValue = value.trim();
+    // First, try to match by code (the ideal case, e.g., "DE").
     for (var i = 0; i < MARKET_COUNTRIES.length; i++) {
-      if (MARKET_COUNTRIES[i].code === code) return MARKET_COUNTRIES[i];
+      if (MARKET_COUNTRIES[i].code.toLowerCase() === trimmedValue.toLowerCase()) return MARKET_COUNTRIES[i];
+    }
+    // Fallback: try to match by name (for legacy/bad data, e.g., "Germany").
+    const valueAsName = trimmedValue.toLowerCase();
+    for (var i = 0; i < MARKET_COUNTRIES.length; i++) {
+      if (MARKET_COUNTRIES[i].name.toLowerCase() === valueAsName) return MARKET_COUNTRIES[i];
     }
     return null;
   }
@@ -168,16 +198,23 @@ document.addEventListener("DOMContentLoaded", async function() {
   }
 
   function reloadBrowseData() {
+    // Clear any previous fallback warnings.
+    const warningEl = document.getElementById("marketWarning");
+    if (warningEl) warningEl.innerHTML = "";
+
+    console.log("Reloading market data for country:", activeCountryCode || "Worldwide");
     loadTrending();
     loadMovers();
+    loadTicker();
   }
 
   function handleCountrySearch() {
-    var q = browseCountryEl.value.trim().toLowerCase();
+    const rawValue = browseCountryEl.value.trim();
+    const lowerRawValue = rawValue.toLowerCase();
     clearTimeout(countrySearchTimer);
 
     // When the input is cleared, reset to Worldwide view.
-    if (!q) {
+    if (!rawValue) {
       browseCountryResultsEl.classList.add("d-none");
       browseCountryResultsEl.innerHTML = "";
       if (activeCountryCode !== "") {
@@ -188,8 +225,13 @@ document.addEventListener("DOMContentLoaded", async function() {
       return;
     }
 
+    // For searching, remove the flag from the query string.
+    // This allows users to type in the input even when a country is already selected.
+    const q = rawValue.replace(/^\p{Emoji_Presentation}\s*/u, "").toLowerCase();
+
     // Don't search if the input already says "Worldwide".
-    if (q === "🌐 worldwide") {
+    // We check the original value here before it was cleaned.
+    if (lowerRawValue === "🌐 worldwide") {
       browseCountryResultsEl.classList.add("d-none");
       return;
     }
@@ -205,7 +247,7 @@ document.addEventListener("DOMContentLoaded", async function() {
       if (run !== countrySearchRun) return;
 
       var matches = MARKET_COUNTRIES.filter(function(country) {
-        return country.name.toLowerCase().indexOf(q) !== -1 || country.code.toLowerCase().indexOf(q) === 0;
+        return country.name.toLowerCase().includes(q) || country.code.toLowerCase().startsWith(q);
       });
 
       if (!matches.length) {
@@ -229,7 +271,7 @@ document.addEventListener("DOMContentLoaded", async function() {
       browseCountryResultsEl.querySelectorAll("[data-country]").forEach(function(btn) {
         btn.addEventListener("click", function() {
           var code = btn.getAttribute("data-country");
-          var country = findCountryByCode(code);
+          var country = findCountry(code);
           if (!country) return;
 
           // "WW" is the special code for our Worldwide option.
@@ -252,8 +294,11 @@ document.addEventListener("DOMContentLoaded", async function() {
     var track = document.getElementById("tickerTrack");
     if (!track || !tape) return;
     try {
-      var stocks = await FinoraAPI.getTrending();
-      if (!stocks.length) { tape.classList.add("d-none"); return; }
+      // getTrending now returns an object { data, fallback }
+      var result = await FinoraAPI.getTrending(activeCountryCode || "");
+      var stocks = result.data;
+
+      if (!stocks || !stocks.length) { tape.classList.add("d-none"); return; }
       if (stocks.every(function(s) { return s.price == null; })) { tape.classList.add("d-none"); return; }
       function item(s) {
         var up = s.change >= 0;
@@ -382,8 +427,40 @@ document.addEventListener("DOMContentLoaded", async function() {
     try {
       // Use top gainers as the source for the "trending" table, as this API call
       // is already country-aware. This fixes the country filter functionality.
-      var stocks = await FinoraAPI.getGainers(10, activeCountryCode || "");
-      if (!stocks.length) { body.innerHTML = Finora.emptyRow(6, activeCountryCode ? "No trending stocks for this market." : Finora.API_UNAVAILABLE_MSG); return; }
+      var result = await FinoraAPI.getGainers(10, activeCountryCode || "");
+      var stocks = result.data;
+
+      // If the API call for a specific country failed and we fell back to the
+      // worldwide list, show an informative message to the user.
+      const warningEl = document.getElementById("marketWarning");
+      if (warningEl && result.fallback && activeCountryCode) {
+        const countryName = (findCountry(activeCountryCode) || { name: activeCountryCode }).name;
+        if (stocks && stocks.length > 0) {
+          // If we fell back AND we have stocks, it means we're showing the US default list.
+          warningEl.innerHTML = `<div class="alert alert-warning small mb-3">
+            <i class="bi bi-exclamation-triangle me-2"></i>Could not load market data for <strong>${countryName}</strong>. Showing worldwide stocks instead. This may be due to API plan limitations.
+          </div>`;
+        } else {
+          // If we fell back and have NO stocks, it means the API failed for a non-US country.
+          warningEl.innerHTML = `<div class="alert alert-warning small mb-3">
+            <i class="bi bi-exclamation-triangle me-2"></i>Could not load market data for <strong>${countryName}</strong>. This may be due to API plan limitations.
+          </div>`;
+        }
+      }
+
+      if (!stocks || !stocks.length) {
+        const countryName = activeCountryCode ? (findCountry(activeCountryCode) || { name: activeCountryCode }).name : "";
+        let message = Finora.API_UNAVAILABLE_MSG;
+        if (activeCountryCode) {
+          if (result.fallback) {
+            message = `Stock info from ${countryName} is unavailable.`;
+          } else {
+            message = `No trending stocks found for this market.`;
+          }
+        }
+        body.innerHTML = Finora.emptyRow(6, message);
+        return;
+      }
       body.innerHTML = stocks
         .map(function(s, i) {
           var up = s.change >= 0;
@@ -465,9 +542,20 @@ document.addEventListener("DOMContentLoaded", async function() {
     if (!wrap) return;
     wrap.innerHTML = `<div class="text-muted-2 small p-4">Loading…</div>`;
     try {
-      var stocks = await fetchFn(6);
-      if (!stocks.length) {
-        wrap.innerHTML = `<div class="text-muted-2 small p-4">${Finora.API_UNAVAILABLE_MSG}</div>`;
+      var result = await fetchFn(6);
+      var stocks = result.data;
+
+      if (!stocks || !stocks.length) {
+        const countryName = activeCountryCode ? (findCountry(activeCountryCode) || { name: activeCountryCode }).name : "";
+        let message = `No ${isGainer ? "gainers" : "losers"} found.`;
+        if (activeCountryCode) {
+          if (result.fallback) {
+            message = `Data for ${countryName} is unavailable.`;
+          } else {
+            message = `No ${isGainer ? "gainers" : "losers"} found for this market.`;
+          }
+        }
+        wrap.innerHTML = `<div class="text-muted-2 small p-4">${message}</div>`;
         return;
       }
       wrap.innerHTML = stocks.map(function(s) { return renderMoverItem(s, isGainer); }).join("");
@@ -780,14 +868,16 @@ document.addEventListener("DOMContentLoaded", async function() {
     syncWatchButton(s.symbol);
   }
 
-  window.addEventListener("popstate", function() {
+  window.addEventListener("popstate", async function() {
     var sym = new URLSearchParams(location.search).get("symbol");
     if (sym) {
       activeSymbol = sym;
       showDetailView();
-      initDetail(sym);
+      await initDetail(sym);
     } else {
       showBrowseView();
+      // When returning to the browse view, we should ensure the data is fresh.
+      reloadBrowseData();
     }
   });
 });

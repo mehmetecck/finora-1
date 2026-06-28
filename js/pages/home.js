@@ -10,9 +10,9 @@ document.addEventListener("DOMContentLoaded", async function() {
   if (!fbUser) return;
 
   // Get the normalized user profile, which contains name, plan, etc.
-  const profile = Finora.getProfile();
+  let profile = Finora.getProfile();
 
-  checkAndSetLocation(profile);
+  profile = await checkAndSetLocation(profile);
 
   renderGreeting(profile);
   renderWatchlistStats(profile);
@@ -22,44 +22,75 @@ document.addEventListener("DOMContentLoaded", async function() {
   loadIndicesPreview();
 
   /**
+   * Wraps the browser's Geolocation API in a Promise for use with async/await.
+   * @param {object} options - Options for getCurrentPosition (e.g., timeout).
+   * @returns {Promise<GeolocationPosition>}
+   */
+  function getPromisedLocation(options = { timeout: 10000 }) {
+    return new Promise((resolve, reject) => {
+      if (!("geolocation" in navigator)) {
+        return reject(new Error("Geolocation is not supported by your browser."));
+      }
+      navigator.geolocation.getCurrentPosition(resolve, reject, options);
+    });
+  }
+
+  /**
+   * Fetches a country code from latitude and longitude using a reverse geocoding API.
+   * @param {number} latitude
+   * @param {number} longitude
+   * @returns {Promise<string|null>} The uppercase country code or null.
+   */
+  async function getCountryFromCoords(latitude, longitude) {
+    try {
+      // NOTE: This example uses a free public API. A production app
+      // should use a robust service with an API key (e.g., Google, Mapbox).
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+      if (!response.ok) throw new Error(`Reverse geocoding failed with status: ${response.status}`);
+      
+      const data = await response.json();
+      if (data && data.address && data.address.country_code) {
+        return data.address.country_code.toUpperCase();
+      }
+      return null;
+    } catch (error) {
+      console.error("Reverse geocoding failed:", error);
+      return null;
+    }
+  }
+
+  /**
    * Checks if the user's country is set, and if not, prompts for geolocation
    * to set it automatically. This is a one-time operation.
    * @param {object} profile The user's profile object.
+   * @returns {Promise<object>} The potentially updated profile object.
    */
-  function checkAndSetLocation(profile) {
+  async function checkAndSetLocation(profile) {
     const askedForLocation = localStorage.getItem("finora_location_prompted");
 
     // Only ask if country isn't set and we haven't prompted before.
     if (profile && !profile.country && !askedForLocation) {
       localStorage.setItem("finora_location_prompted", "true"); // Ask only once
 
-      if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            // On success, use a reverse geocoding API to get the country.
-            // NOTE: This example uses a free public API. A production app
-            // should use a robust service with an API key (e.g., Google, Mapbox).
-            try {
-              const { latitude, longitude } = position.coords;
-              const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-              const data = await response.json();
+      try {
+        const position = await getPromisedLocation();
+        const { latitude, longitude } = position.coords;
+        const countryCode = await getCountryFromCoords(latitude, longitude);
 
-              if (data && data.address && data.address.country_code) {
-                const countryCode = data.address.country_code.toUpperCase();
-                await Finora.updateProfile({ country: countryCode });
-                Finora.toast(`Location set to ${countryCode}. You can change this in your profile.`, "info");
-              }
-            } catch (error) {
-              console.error("Reverse geocoding failed:", error);
-            }
-          },
-          (error) => {
-            // User denied permission or an error occurred. Do nothing.
-            console.warn(`Geolocation error (${error.code}): ${error.message}`);
-          }
-        );
+        if (countryCode) {
+          const updatedProfile = await Finora.updateProfile({ country: countryCode });
+          // Pass the entire updated profile to the next page load via sessionStorage
+          // to avoid any localStorage race conditions on navigation.
+          sessionStorage.setItem("finora_just_updated_profile", JSON.stringify(updatedProfile));
+          Finora.toast(`Location set to ${countryCode}. You can change this in your profile.`, "info");
+          return updatedProfile;
+        }
+      } catch (error) {
+        // User denied permission or an error occurred. Log it but don't bother the user.
+        console.warn(`Could not auto-set location (${error.code}): ${error.message}`);
       }
     }
+    return profile;
   }
 
   /**
@@ -117,8 +148,10 @@ document.addEventListener("DOMContentLoaded", async function() {
 
     try {
       // Use getGainers, which is country-aware, to show relevant trending stocks.
-      const stocks = await FinoraAPI.getGainers(5, countryCode);
-      if (!stocks.length) throw new Error("empty");
+      const result = await FinoraAPI.getGainers(5, countryCode);
+      const stocks = result.data;
+
+      if (!stocks || !stocks.length) throw new Error("empty");
       statEl.textContent = String(stocks.length);
       wrap.innerHTML = stocks
         .slice(0, 5)

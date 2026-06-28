@@ -5,7 +5,19 @@
 document.addEventListener("DOMContentLoaded", async () => {
   const fbUser = await Finora.requireAuth(); // redirects if not logged in
   if (!fbUser) return;
-  const user = Finora.getProfile();
+  
+  let user;
+  const updatedProfileJSON = sessionStorage.getItem("finora_just_updated_profile");
+  if (updatedProfileJSON) {
+    // If a profile was just updated (e.g., by geolocation on the home page),
+    // use it directly to ensure the UI is immediately consistent.
+    user = JSON.parse(updatedProfileJSON);
+    sessionStorage.removeItem("finora_just_updated_profile");
+  } else {
+    // Otherwise, get the profile from the standard source.
+    user = Finora.getProfile();
+  }
+
   const css = getComputedStyle(document.documentElement);
   const C = (n) => css.getPropertyValue(n).trim();
 
@@ -164,25 +176,142 @@ document.addEventListener("DOMContentLoaded", async () => {
   settingsForm.email.value = user.email;
   settingsForm.phone.value = user.phone || "";
   settingsForm.bio.value = user.bio || "";
-  if (user.country) settingsForm.country.value = user.country;
 
-  // Add helper text for the country setting to clarify its purpose.
-  const countryInput = settingsForm.country;
-  if (countryInput) {
+  let ALL_COUNTRIES = [];
+
+  function findCountry(value) {
+    if (!value) return null;
+    const lowerValue = value.toLowerCase();
+    // Match by code first
+    for (const country of ALL_COUNTRIES) {
+      if (country.code.toLowerCase() === lowerValue) return country;
+    }
+    // Then by name
+    for (const country of ALL_COUNTRIES) {
+      if (country.name.toLowerCase() === lowerValue) return country;
+    }
+    return null;
+  }
+
+  function countryLabel(country) {
+    return country.flag + " " + country.name;
+  }
+
+  setupCountrySearch();
+
+  /**
+   * Implements a searchable country input, similar to the one on the Market page.
+   */
+  async function setupCountrySearch() {
+    const countryInput = settingsForm.country;
+    if (!countryInput) return;
+
+    const resultsEl = document.getElementById("profileCountryResults");
+    if (!resultsEl) return;
+
+    try {
+      // Use the CDN for a reliable, versioned country list.
+      const response = await fetch("https://cdn.jsdelivr.net/npm/country-flag-emoji-json@2.0.0/dist/index.json");
+      const data = await response.json();
+      ALL_COUNTRIES = data
+        .map(c => ({ code: c.code, name: c.name, flag: c.emoji }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) {
+      console.error("Failed to load country list for profile:", error);
+      // If the API fails, the input remains a text field as a fallback.
+      if (user.country) countryInput.value = user.country;
+      return;
+    }
+
     const helpText = document.createElement("div");
     helpText.className = "form-text text-muted-2 small mt-1";
     helpText.textContent = "This sets your preferred country for viewing stocks on the Market page.";
-    countryInput.insertAdjacentElement("afterend", helpText);
+    const wrapper = countryInput.closest(".market-search-wrap");
+    if (wrapper) wrapper.insertAdjacentElement("afterend", helpText);
+
+    // Set initial value
+    if (user.country) {
+      const userCountry = findCountry(user.country);
+      countryInput.value = userCountry ? countryLabel(userCountry) : user.country;
+    }
+
+    let countrySearchTimer = null;
+    let countrySearchRun = 0;
+
+    function handleCountrySearch() {
+      const rawValue = countryInput.value.trim();
+      clearTimeout(countrySearchTimer);
+
+      // On focus of an empty field, or if cleared, show a prompt.
+      if (!rawValue) {
+        resultsEl.classList.remove("d-none");
+        resultsEl.innerHTML = `<div class="text-muted-2 small p-3">Type to search for a country...</div>`;
+        return;
+      }
+
+      const q = rawValue.replace(/^\p{Emoji_Presentation}\s*/u, "").toLowerCase();
+
+      if (q.length < 2) {
+        resultsEl.classList.remove("d-none");
+        resultsEl.innerHTML = `<div class="text-muted-2 small p-3">Type at least 2 characters...</div>`;
+        return;
+      }
+
+      var run = ++countrySearchRun;
+      countrySearchTimer = setTimeout(function() {
+        if (run !== countrySearchRun) return;
+
+        var matches = ALL_COUNTRIES.filter(function(country) {
+          return country.name.toLowerCase().includes(q) || country.code.toLowerCase().startsWith(q);
+        });
+
+        console.log(`Searching for "${q}", found ${matches.length} matches.`);
+
+        if (!matches.length) {
+          resultsEl.classList.remove("d-none");
+          resultsEl.innerHTML = `<div class="text-muted-2 small p-3">No matches found.</div>`;
+          return;
+        }
+
+        resultsEl.classList.remove("d-none");
+        resultsEl.innerHTML = matches.map(function(c) { return `
+          <button type="button" class="market-search-result" data-country-code="${c.code}">
+            <span class="market-country-flag" aria-hidden="true">${c.flag}</span>
+            <span class="min-w-0">
+              <span class="d-block fw-semibold text-white text-truncate">${c.name}</span>
+            </span>
+          </button>`; }).join("");
+
+        resultsEl.querySelectorAll("[data-country-code]").forEach(function(btn) {
+          btn.addEventListener("click", function() {
+            var country = findCountry(btn.dataset.countryCode);
+            if (country) countryInput.value = countryLabel(country);
+            resultsEl.classList.add("d-none");
+          });
+        });
+      }, 200);
+    }
+
+    countryInput.addEventListener("input", handleCountrySearch);
+    countryInput.addEventListener("focus", function() { this.select(); handleCountrySearch(); });
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest(".market-search-wrap")) resultsEl.classList.add("d-none");
+    });
   }
 
   settingsForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     try {
+      const countryValue = settingsForm.country.value;
+      const countryLabelText = countryValue.replace(/^\p{Emoji_Presentation}\s*/u, "").trim();
+      const country = findCountry(countryLabelText);
+      const countryCodeToSave = country ? country.code : countryValue;
+
       const updated = await Finora.updateProfile({
         name: settingsForm.name.value.trim(),
         email: settingsForm.email.value.trim(),
         phone: settingsForm.phone.value.trim(),
-        country: settingsForm.country.value,
+        country: countryCodeToSave,
         bio: settingsForm.bio.value.trim(),
       });
       if (updated) {
@@ -235,4 +364,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       Finora.toast(Finora.mapAuthError(err.code), "error");
     }
   });
+
+  /* ----------------------- Advanced Settings ---------------------- */
+  const resetLocationBtn = document.querySelector("[data-reset-location]");
+  if (resetLocationBtn) {
+    resetLocationBtn.addEventListener("click", () => {
+      localStorage.removeItem("finora_location_prompted");
+      Finora.toast("Location prompt has been reset. Visit the home page to be asked again.", "info");
+    });
+  }
 });
