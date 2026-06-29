@@ -39,10 +39,13 @@ generated ticker avatar.
 
 ## Market country
 
-On the first visit, Finora asks the browser for a coarse location and resolves
-it to a country. If location permission is unavailable or declined, it falls
-back to country-level IP lookup and finally the browser locale. Only the
-resolved country is stored in `localStorage`; coordinates are never stored.
+The country picker is loaded from
+`country-flag-emoji-json@2.0.0/dist/index.json` on jsDelivr and caches the last
+successful catalog in `localStorage`. On the first visit, Finora asks the
+browser for a coarse location and resolves it to a country. If location
+permission is unavailable or declined, it falls back to country-level IP
+lookup and finally the browser locale. Only the resolved country is stored;
+coordinates are never stored.
 
 The preference appears in Profile → Settings and in the market country picker.
 Changing it in either place updates the shared preference. Stock search uses
@@ -66,6 +69,8 @@ Finora/
 │
 ├── js/
 │   ├── core/               # Shared scripts, loaded on every page
+│   │   ├── config.js           # Public browser configuration
+│   │   ├── components.js       # Shared header and footer web components
 │   │   ├── firebase-config.js  # Firebase init (add your project config here)
 │   │   ├── main.js             # Global `Finora`: auth, navbar, toasts, helpers
 │   │   ├── charts.js           # Vanilla <canvas> chart helper (no Chart.js)

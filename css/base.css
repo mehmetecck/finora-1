@@ -35,6 +35,11 @@
   --brand-gradient: linear-gradient(135deg, var(--brand), var(--accent));
 }
 
+finora-header,
+finora-footer {
+  display: block;
+}
+
 * { box-sizing: border-box; }
 
 html { scroll-behavior: smooth; }

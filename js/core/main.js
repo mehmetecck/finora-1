@@ -22,21 +22,9 @@ var Finora = (function() {
   var LOCAL_SESSION = "finora_local_session";
   var EMAIL_LINK_KEY = "finora_email_link_signin";
   var MARKET_COUNTRY_KEY = "finora_market_country";
-  var MARKET_COUNTRY_CODES = [
-    ["AR", "Argentina"], ["AT", "Austria"], ["AU", "Australia"], ["BE", "Belgium"],
-    ["BR", "Brazil"], ["CA", "Canada"], ["CH", "Switzerland"], ["CL", "Chile"],
-    ["CN", "China"], ["CO", "Colombia"], ["CZ", "Czech Republic"], ["DE", "Germany"],
-    ["DK", "Denmark"], ["EG", "Egypt"], ["ES", "Spain"], ["FI", "Finland"],
-    ["FR", "France"], ["GB", "United Kingdom"], ["GR", "Greece"], ["HK", "Hong Kong"],
-    ["HU", "Hungary"], ["ID", "Indonesia"], ["IE", "Ireland"], ["IL", "Israel"],
-    ["IN", "India"], ["IT", "Italy"], ["JP", "Japan"], ["KR", "South Korea"],
-    ["LU", "Luxembourg"], ["MY", "Malaysia"], ["MX", "Mexico"], ["NL", "Netherlands"],
-    ["NO", "Norway"], ["NZ", "New Zealand"], ["PH", "Philippines"], ["PK", "Pakistan"],
-    ["PL", "Poland"], ["PT", "Portugal"], ["QA", "Qatar"], ["RO", "Romania"],
-    ["SA", "Saudi Arabia"], ["SE", "Sweden"], ["SG", "Singapore"], ["TH", "Thailand"],
-    ["TR", "Turkey"], ["TW", "Taiwan"], ["AE", "United Arab Emirates"],
-    ["US", "United States"], ["VN", "Vietnam"], ["ZA", "South Africa"],
-  ];
+  var COUNTRY_CATALOG_KEY = "finora_country_catalog";
+  var COUNTRY_CATALOG_URL = "https://cdn.jsdelivr.net/npm/country-flag-emoji-json@2.0.0/dist/index.json";
+  var MARKET_COUNTRIES = [];
 
   function countryFlag(code) {
     return code.length === 2
@@ -44,9 +32,50 @@ var Finora = (function() {
       : "";
   }
 
-  var MARKET_COUNTRIES = MARKET_COUNTRY_CODES.map(function(item) {
-    return { code: item[0], name: item[1], flag: countryFlag(item[0]) };
-  });
+  function normalizeCountryCatalog(items) {
+    if (!Array.isArray(items)) return [];
+    return items
+      .filter(function(item) {
+        return item && /^[A-Za-z]{2}$/.test(item.code || "") && item.name;
+      })
+      .map(function(item) {
+        var code = item.code.toUpperCase();
+        return {
+          code: code,
+          name: String(item.name),
+          flag: item.emoji || countryFlag(code),
+          image: item.image || "",
+        };
+      })
+      .sort(function(a, b) { return a.name.localeCompare(b.name); });
+  }
+
+  function replaceCountryCatalog(items) {
+    MARKET_COUNTRIES.splice.apply(MARKET_COUNTRIES, [0, MARKET_COUNTRIES.length].concat(items));
+    return MARKET_COUNTRIES;
+  }
+
+  function cachedCountryCatalog() {
+    try {
+      return normalizeCountryCatalog(JSON.parse(localStorage.getItem(COUNTRY_CATALOG_KEY) || "[]"));
+    } catch (err) {
+      return [];
+    }
+  }
+
+  async function loadCountryCatalog() {
+    try {
+      var data = await fetchWithTimeout(COUNTRY_CATALOG_URL, 8000);
+      var countries = normalizeCountryCatalog(data);
+      if (!countries.length) throw new Error("Country catalog is empty.");
+      localStorage.setItem(COUNTRY_CATALOG_KEY, JSON.stringify(countries));
+      return replaceCountryCatalog(countries);
+    } catch (err) {
+      return replaceCountryCatalog(cachedCountryCatalog());
+    }
+  }
+
+  var countryCatalogReady = loadCountryCatalog();
 
   function findMarketCountry(value) {
     var needle = String(value || "").trim().toLowerCase();
@@ -240,6 +269,7 @@ var Finora = (function() {
       case "local/wrong-password": return "Current password is incorrect.";
       case "auth/user-disabled": return "This account has been disabled.";
       case "auth/too-many-requests": return "Too many attempts. Please try again later.";
+      case "auth/quota-exceeded": return "Firebase's daily email-link limit has been reached. Try again after the quota resets, or use password/Google sign-in.";
       case "auth/network-request-failed": return "Network error. Check your connection and try again.";
       case "auth/requires-recent-login": return "Please log in again to complete this action.";
       case "auth/popup-closed-by-user":
@@ -248,8 +278,10 @@ var Finora = (function() {
       case "auth/account-exists-with-different-credential": return "An account already exists with this email. Try logging in with your password.";
       case "auth/operation-not-allowed": return "This sign-in method isn't enabled for this Firebase project.";
       case "auth/unauthorized-domain": return "This domain is not authorized in Firebase Authentication settings.";
+      case "auth/unauthorized-continue-uri": return "This login-link return domain is not authorized in Firebase Authentication settings.";
       case "auth/invalid-continue-uri": return "The confirmation email redirect URL is not valid.";
       case "auth/missing-continue-uri": return "The confirmation email redirect URL is missing.";
+      case "auth/invalid-dynamic-link-domain": return "The configured Firebase Dynamic Links domain is not authorized.";
       case "auth/invalid-action-code": return "This email login link is invalid or has already been used.";
       case "auth/expired-action-code": return "This email login link has expired. Request a new one.";
       case "auth/invalid-api-key":
@@ -441,7 +473,7 @@ var Finora = (function() {
     captureToken();
     resolveReady(currentUser);
   }
-  var marketCountryReady = authReady.then(resolveMarketCountry);
+  var marketCountryReady = Promise.all([authReady, countryCatalogReady]).then(resolveMarketCountry);
 
   /* ------------------------------ Auth ----------------------------- */
   async function register(opts) {
@@ -548,6 +580,7 @@ var Finora = (function() {
       localStorage.setItem(EMAIL_LINK_KEY, email);
       return { ok: true };
     } catch (e) {
+      console.error("[Finora] Email-link sign-in request failed:", e.code, e.message);
       return { ok: false, code: e.code, error: mapAuthError(e.code) };
     }
   }
@@ -778,6 +811,13 @@ var Finora = (function() {
     if (!slot || slot.dataset.dropdownBound) return;
     slot.dataset.dropdownBound = "1";
     slot.addEventListener("click", function(e) {
+      var logoutBtn = e.target.closest("[data-nav-logout]");
+      if (logoutBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        logout();
+        return;
+      }
       var link = e.target.closest(".dropdown-item[href]");
       if (!link) return;
       e.preventDefault();
@@ -803,8 +843,8 @@ var Finora = (function() {
     var menu = pending ? "" : `
             <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark border-finora">
               <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person me-2"></i>My Profile</a></li>
-              <li><a class="dropdown-item" href="portfolio.html"><i class="bi bi-briefcase me-2"></i>My Portfolio</a></li>
-              <li><a class="dropdown-item" href="watchlist.html"><i class="bi bi-star me-2"></i>My Watchlist</a></li>
+              <li><hr class="dropdown-divider border-finora"></li>
+              <li><button class="dropdown-item" type="button" data-nav-logout><i class="bi bi-box-arrow-right me-2"></i>Log out</button></li>
             </ul>`;
     return `<div class="d-flex align-items-center gap-3${pendingCls}">
           <div class="dropdown">
