@@ -951,8 +951,13 @@ var Finora = (function() {
     }
     bindDropdownLinks();
     var path = currentPath();
-    document.querySelectorAll(".navbar .nav-link").forEach(function(link) {
-      if (link.getAttribute("href") === path) link.classList.add("active");
+    document.querySelectorAll(".navbar-nav .nav-link").forEach(function(link) {
+      var linkPath = (link.getAttribute("href") || "").split("?")[0];
+      if (linkPath === path) {
+        link.classList.add("active");
+      } else {
+        link.classList.remove("active");
+      }
     });
   }
 

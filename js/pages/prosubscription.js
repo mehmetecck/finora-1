@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", function() {
     {
       id: "Free", name: "Free", monthly: 0,
       tagline: "For getting started", featured: false,
-      cta: "Your current plan",
+      cta: "Change Plan",
       features: ["Real-time quotes", "Basic charts", "1 watchlist"],
     },
     {
