@@ -21,6 +21,153 @@ var Finora = (function() {
   var LOCAL_USERS = "finora_local_users";
   var LOCAL_SESSION = "finora_local_session";
   var EMAIL_LINK_KEY = "finora_email_link_signin";
+  var MARKET_COUNTRY_KEY = "finora_market_country";
+  var MARKET_COUNTRY_CODES = [
+    ["AR", "Argentina"], ["AT", "Austria"], ["AU", "Australia"], ["BE", "Belgium"],
+    ["BR", "Brazil"], ["CA", "Canada"], ["CH", "Switzerland"], ["CL", "Chile"],
+    ["CN", "China"], ["CO", "Colombia"], ["CZ", "Czech Republic"], ["DE", "Germany"],
+    ["DK", "Denmark"], ["EG", "Egypt"], ["ES", "Spain"], ["FI", "Finland"],
+    ["FR", "France"], ["GB", "United Kingdom"], ["GR", "Greece"], ["HK", "Hong Kong"],
+    ["HU", "Hungary"], ["ID", "Indonesia"], ["IE", "Ireland"], ["IL", "Israel"],
+    ["IN", "India"], ["IT", "Italy"], ["JP", "Japan"], ["KR", "South Korea"],
+    ["LU", "Luxembourg"], ["MY", "Malaysia"], ["MX", "Mexico"], ["NL", "Netherlands"],
+    ["NO", "Norway"], ["NZ", "New Zealand"], ["PH", "Philippines"], ["PK", "Pakistan"],
+    ["PL", "Poland"], ["PT", "Portugal"], ["QA", "Qatar"], ["RO", "Romania"],
+    ["SA", "Saudi Arabia"], ["SE", "Sweden"], ["SG", "Singapore"], ["TH", "Thailand"],
+    ["TR", "Turkey"], ["TW", "Taiwan"], ["AE", "United Arab Emirates"],
+    ["US", "United States"], ["VN", "Vietnam"], ["ZA", "South Africa"],
+  ];
+
+  function countryFlag(code) {
+    return code.length === 2
+      ? String.fromCodePoint(code.charCodeAt(0) + 127397, code.charCodeAt(1) + 127397)
+      : "";
+  }
+
+  var MARKET_COUNTRIES = MARKET_COUNTRY_CODES.map(function(item) {
+    return { code: item[0], name: item[1], flag: countryFlag(item[0]) };
+  });
+
+  function findMarketCountry(value) {
+    var needle = String(value || "").trim().toLowerCase();
+    if (!needle) return null;
+    var found = MARKET_COUNTRIES.find(function(country) {
+      return country.code.toLowerCase() === needle || country.name.toLowerCase() === needle;
+    });
+    if (found) return Object.assign({}, found);
+    if (/^[a-z]{2}$/i.test(needle)) {
+      var code = needle.toUpperCase();
+      var name = code;
+      try {
+        name = new Intl.DisplayNames(["en"], { type: "region" }).of(code) || code;
+      } catch (err) {
+        /* Intl.DisplayNames is not available in some older browsers. */
+      }
+      return { code: code, name: name, flag: countryFlag(code) };
+    }
+    return null;
+  }
+
+  function readMarketCountry() {
+    try {
+      var stored = JSON.parse(localStorage.getItem(MARKET_COUNTRY_KEY) || "null");
+      if (!stored || !stored.code) return null;
+      var known = findMarketCountry(stored.code);
+      return known || stored;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function saveCountryToCurrentUser(country) {
+    if (!currentUser || !country) return;
+    var patch = { country: country.name, countryCode: country.code };
+    if (!USE_FIREBASE) {
+      currentUser = Local.updateUser(patch) || currentUser;
+    } else {
+      setExtras(currentUser.uid, patch);
+    }
+  }
+
+  function setMarketCountry(value, syncProfile) {
+    if (syncProfile === undefined) syncProfile = true;
+    var country = typeof value === "object" && value
+      ? findMarketCountry(value.code || value.name)
+      : findMarketCountry(value);
+    if (!country) return null;
+    localStorage.setItem(MARKET_COUNTRY_KEY, JSON.stringify(country));
+    if (syncProfile) saveCountryToCurrentUser(country);
+    window.dispatchEvent(new CustomEvent("finora:countrychange", { detail: country }));
+    return country;
+  }
+
+  function fetchWithTimeout(url, timeoutMs) {
+    var controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var timeout = controller ? setTimeout(function() { controller.abort(); }, timeoutMs) : null;
+    return fetch(url, { signal: controller ? controller.signal : undefined })
+      .then(function(response) {
+        if (!response.ok) throw new Error("Location lookup failed.");
+        return response.json();
+      })
+      .finally(function() { if (timeout) clearTimeout(timeout); });
+  }
+
+  function browserPosition() {
+    return new Promise(function(resolve, reject) {
+      if (!navigator.geolocation) {
+        reject(new Error("Geolocation is unavailable."));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: false,
+        timeout: 6000,
+        maximumAge: 24 * 60 * 60 * 1000,
+      });
+    });
+  }
+
+  async function detectMarketCountry() {
+    try {
+      var position = await browserPosition();
+      var coords = position.coords;
+      var reverseUrl = new URL("https://api.bigdatacloud.net/data/reverse-geocode-client");
+      reverseUrl.searchParams.set("latitude", String(coords.latitude));
+      reverseUrl.searchParams.set("longitude", String(coords.longitude));
+      reverseUrl.searchParams.set("localityLanguage", "en");
+      var reverse = await fetchWithTimeout(reverseUrl.toString(), 6000);
+      var precise = findMarketCountry(reverse.countryCode);
+      if (precise) return precise;
+    } catch (err) {
+      /* Permission denial and unavailable GPS both fall back to country-level IP lookup. */
+    }
+
+    try {
+      var ipResult = await fetchWithTimeout("https://api.country.is/", 5000);
+      var fromIp = findMarketCountry(ipResult.country);
+      if (fromIp) return fromIp;
+    } catch (err) {
+      /* Offline visitors still get a locale-derived default below. */
+    }
+
+    var locale = (navigator.languages && navigator.languages[0]) || navigator.language || "";
+    var localeRegion = locale.match(/[-_]([A-Za-z]{2})\b/);
+    return findMarketCountry(localeRegion ? localeRegion[1] : "US");
+  }
+
+  async function resolveMarketCountry() {
+    var profile = getProfile();
+    var fromProfile = profile && findMarketCountry(profile.countryCode || profile.country);
+    if (fromProfile) return setMarketCountry(fromProfile, false);
+
+    var stored = readMarketCountry();
+    if (stored) {
+      saveCountryToCurrentUser(stored);
+      return stored;
+    }
+
+    var detected = await detectMarketCountry();
+    return setMarketCountry(detected || "US", true);
+  }
 
   /* --------------------- Profile extras (local) -------------------- */
   function allExtras() { return JSON.parse(localStorage.getItem(EXTRAS_KEY) || "{}"); }
@@ -152,6 +299,8 @@ var Finora = (function() {
       users.push({
         uid: "local-" + Date.now(), name: name, email: email, password: password,
         plan: "Free", balance: 0, currency: "USD", joined: new Date().toISOString(),
+        country: (readMarketCountry() || {}).name || "",
+        countryCode: (readMarketCountry() || {}).code || "",
       });
       saveUsers(users);
       return { ok: true };
@@ -175,7 +324,8 @@ var Finora = (function() {
       var users = getUsers();
       var user = users.find(function(u) { return u.email === "google.user@gmail.com"; });
       if (!user) {
-        user = { uid: "local-google", name: "Google User", email: "google.user@gmail.com", password: null, plan: "Free", balance: 0, joined: new Date().toISOString() };
+        var marketCountry = readMarketCountry() || {};
+        user = { uid: "local-google", name: "Google User", email: "google.user@gmail.com", password: null, plan: "Free", balance: 0, joined: new Date().toISOString(), country: marketCountry.name || "", countryCode: marketCountry.code || "" };
         users.push(user);
         saveUsers(users);
       }
@@ -291,6 +441,7 @@ var Finora = (function() {
     captureToken();
     resolveReady(currentUser);
   }
+  var marketCountryReady = authReady.then(resolveMarketCountry);
 
   /* ------------------------------ Auth ----------------------------- */
   async function register(opts) {
@@ -311,7 +462,8 @@ var Finora = (function() {
       var cred = await auth.createUserWithEmailAndPassword(email, password);
       if (name) await cred.user.updateProfile({ displayName: name });
       var verification = await sendVerificationEmail(cred.user);
-      setExtras(cred.user.uid, { plan: "Free", balance: 0, currency: "USD" });
+      var registrationCountry = readMarketCountry() || {};
+      setExtras(cred.user.uid, { plan: "Free", balance: 0, currency: "USD", country: registrationCountry.name || "", countryCode: registrationCountry.code || "" });
       currentUser = cred.user;
       await captureToken();
       return {
@@ -359,7 +511,10 @@ var Finora = (function() {
       provider.setCustomParameters({ prompt: "select_account" });
       var cred = await auth.signInWithPopup(provider);
       var extras = getExtras(cred.user.uid);
-      if (!extras.plan) setExtras(cred.user.uid, { plan: "Free", balance: 0, currency: "USD" });
+      if (!extras.plan) {
+        var googleCountry = readMarketCountry() || {};
+        setExtras(cred.user.uid, { plan: "Free", balance: 0, currency: "USD", country: googleCountry.name || "", countryCode: googleCountry.code || "" });
+      }
       currentUser = cred.user;
       await captureToken(); // capture the auth token & start the session
       return { ok: true, user: cred.user, token: idToken };
@@ -448,7 +603,8 @@ var Finora = (function() {
         uid: u.uid, name: u.name, email: u.email, joined: u.joined,
         plan: normalizePlan(u.plan), balance: u.balance != null ? u.balance : 0,
         currency: normalizeCurrency(u.currency),
-        phone: u.phone || "", country: u.country || "", bio: u.bio || "",
+        phone: u.phone || "", country: u.country || (readMarketCountry() || {}).name || "",
+        countryCode: u.countryCode || (readMarketCountry() || {}).code || "", bio: u.bio || "",
       };
     }
     var extras = getExtras(currentUser.uid);
@@ -463,13 +619,22 @@ var Finora = (function() {
       balance: extras.balance != null ? extras.balance : 0,
       currency: normalizeCurrency(extras.currency),
       phone: extras.phone || "",
-      country: extras.country || "",
+      country: extras.country || (readMarketCountry() || {}).name || "",
+      countryCode: extras.countryCode || (readMarketCountry() || {}).code || "",
       bio: extras.bio || "",
     };
   }
 
   async function updateProfile(patch) {
     if (!currentUser) return null;
+    if (patch.country || patch.countryCode) {
+      var selectedCountry = findMarketCountry(patch.countryCode || patch.country);
+      if (selectedCountry) {
+        patch.country = selectedCountry.name;
+        patch.countryCode = selectedCountry.code;
+        setMarketCountry(selectedCountry, false);
+      }
+    }
     if (!USE_FIREBASE) {
       currentUser = Local.updateUser(patch);
       renderNavAuth();
@@ -578,48 +743,17 @@ var Finora = (function() {
     return `linear-gradient(135deg, ${COLORS[h % COLORS.length]}, ${COLORS[(h >> 3) % COLORS.length]})`;
   }
 
-  // Company logos stored in assets/logos. Maps ticker symbol -> image path.
-  var LOGOS = {
-    AAPL: "assets/logos/Apple.png",
-    MSFT: "assets/logos/Microsoft.png",
-    NVDA: "assets/logos/Nvidia_logo.png",
-    GOOGL: "assets/logos/Google.png",
-    AMZN: "assets/logos/Amazon_logo.png",
-    META: "assets/logos/Meta.png",
-    TSLA: "assets/logos/Tesla.png",
-    AMD: "assets/logos/AMD.png",
-    JPM: "assets/logos/jpm.png",
-    V: "assets/logos/Visa.png",
-    MA: "assets/logos/Mastercard.png",
-    NFLX: "assets/logos/netflix.png",
-    DIS: "assets/logos/Disney.png",
-    KO: "assets/logos/cokewirsindinlidi.png",
-    PEP: "assets/logos/Pepsi.png",
-    WMT: "assets/logos/Walmart.png",
-    COST: "assets/logos/Costco.png",
-    NKE: "assets/logos/nike.png",
-    MCD: "assets/logos/McDonald.png",
-    SBUX: "assets/logos/Starbucks.png",
-    BA: "assets/logos/Boeing.png",
-    CAT: "assets/logos/Caterpillar.png",
-    GE: "assets/logos/ge.png",
-    XOM: "assets/logos/Exxon.png",
-    CVX: "assets/logos/Chevron.png",
-    JNJ: "assets/logos/JNJ.png",
-    PFE: "assets/logos/pfizer.png",
-    UNH: "assets/logos/United.png",
-    HD: "assets/logos/THD.png",
-    ORCL: "assets/logos/Oracle.png",
-    IBM: "assets/logos/IBM.png",
-    INTC: "assets/logos/intel.png",
-    CRM: "assets/logos/Salesforce.png",
-    UBER: "assets/logos/uber.png",
-    ABNB: "assets/logos/airbnb.png",
-    SHOP: "assets/logos/shopify.png",
-  };
+  function logoKitToken() {
+    var token = window.FINORA_CONFIG && window.FINORA_CONFIG.logoKitToken;
+    return token && token.indexOf("YOUR_") !== 0 ? token : "";
+  }
 
   function logoFor(symbol) {
-    return LOGOS[(symbol || "").trim().toUpperCase()] || null;
+    var token = logoKitToken();
+    var ticker = (symbol || "").trim().toUpperCase();
+    if (!token || !ticker) return null;
+    return "https://img.logokit.com/ticker/" + encodeURIComponent(ticker)
+      + "?token=" + encodeURIComponent(token) + "&size=64&fallback=404";
   }
 
   // Returns the markup for a ticker badge: the company logo when available,
@@ -631,7 +765,7 @@ var Finora = (function() {
     var className = opts.className != null ? opts.className : "ticker-avatar";
     var sym = (symbol || "").trim().toUpperCase();
     var cls = [className, size].filter(function(part) { return part; }).join(" ");
-    var logo = logoFor(sym);
+    var logo = logoFor(opts.logoSymbol || sym);
     if (logo) {
       return `<span class="${cls} has-logo"><img src="${logo}" alt="${sym}" loading="lazy" onerror="this.parentElement.classList.remove('has-logo');this.parentElement.textContent='${sym}';this.parentElement.style.background='${color || symbolColor(sym)}'"></span>`;
     }
@@ -769,6 +903,12 @@ var Finora = (function() {
     if (!allowed) return;
     renderNavAuth();
     renderLandingCtas();
+    if (logoKitToken()) {
+      var footer = document.querySelector(".footer");
+      if (footer && !footer.querySelector("[data-logokit-attribution]")) {
+        footer.insertAdjacentHTML("beforeend", '<div class="text-center mt-1"><a data-logokit-attribution href="https://logokit.com" class="text-muted-2 small" target="_blank" rel="noopener">Logos provided by LogoKit.com</a></div>');
+      }
+    }
     bindDropdownLinks();
     var path = currentPath();
     document.querySelectorAll(".navbar .nav-link").forEach(function(link) {
@@ -783,6 +923,8 @@ var Finora = (function() {
     sendEmailLoginLink: sendEmailLoginLink, isEmailLoginLink: isEmailLoginLink, completeEmailLoginLink: completeEmailLoginLink,
     sendVerificationEmail: function() { return sendVerificationEmail(currentUser); },
     getProfile: getProfile, updateProfile: updateProfile, changePassword: changePassword, deleteAccount: deleteAccount,
+    countryReady: marketCountryReady, countries: MARKET_COUNTRIES, findCountry: findMarketCountry,
+    getMarketCountry: readMarketCountry, setMarketCountry: setMarketCountry,
     requireAuth: requireAuth, mapAuthError: mapAuthError,
     getWatchlist: getWatchlist, removeFromWatchlist: removeFromWatchlist,
     isInWatchlist: isInWatchlist, toggleWatchlist: toggleWatchlist,

@@ -3,7 +3,7 @@
    Browse hub (search, indices, trending) + stock detail view.
    ===================================================================== */
 
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener("DOMContentLoaded", async function() {
   var css = getComputedStyle(document.documentElement);
   function C(n) { return css.getPropertyValue(n).trim(); }
 
@@ -15,27 +15,7 @@ document.addEventListener("DOMContentLoaded", function() {
   var browseCountryEl = document.getElementById("browseCountry");
   var browseCountryResultsEl = document.getElementById("browseCountryResults");
 
-  var MARKET_COUNTRIES = [
-    { code: "US", name: "United States", flag: "\uD83C\uDDFA\uD83C\uDDF8" },
-    { code: "GB", name: "United Kingdom", flag: "\uD83C\uDDEC\uD83C\uDDE7" },
-    { code: "DE", name: "Germany", flag: "\uD83C\uDDE9\uD83C\uDDEA" },
-    { code: "CA", name: "Canada", flag: "\uD83C\uDDE8\uD83C\uDDE6" },
-    { code: "AU", name: "Australia", flag: "\uD83C\uDDE6\uD83C\uDDFA" },
-    { code: "FR", name: "France", flag: "\uD83C\uDDEB\uD83C\uDDF7" },
-    { code: "JP", name: "Japan", flag: "\uD83C\uDDEF\uD83C\uDDF5" },
-    { code: "HK", name: "Hong Kong", flag: "\uD83C\uDDED\uD83C\uDDF0" },
-    { code: "IN", name: "India", flag: "\uD83C\uDDEE\uD83C\uDDF3" },
-    { code: "CN", name: "China", flag: "\uD83C\uDDE8\uD83C\uDDF3" },
-    { code: "KR", name: "South Korea", flag: "\uD83C\uDDF0\uD83C\uDDF7" },
-    { code: "SG", name: "Singapore", flag: "\uD83C\uDDF8\uD83C\uDDEC" },
-    { code: "IT", name: "Italy", flag: "\uD83C\uDDEE\uD83C\uDDF9" },
-    { code: "ES", name: "Spain", flag: "\uD83C\uDDEA\uD83C\uDDF8" },
-    { code: "NL", name: "Netherlands", flag: "\uD83C\uDDF3\uD83C\uDDF1" },
-    { code: "CH", name: "Switzerland", flag: "\uD83C\uDDE8\uD83C\uDDED" },
-    { code: "SE", name: "Sweden", flag: "\uD83C\uDDF8\uD83C\uDDEA" },
-    { code: "BR", name: "Brazil", flag: "\uD83C\uDDE7\uD83C\uDDF7" },
-    { code: "MX", name: "Mexico", flag: "\uD83C\uDDF2\uD83C\uDDFD" },
-  ];
+  var MARKET_COUNTRIES = Finora.countries;
 
   var EXCHANGE_COUNTRY = {
     NASDAQ: "US",
@@ -56,7 +36,14 @@ document.addEventListener("DOMContentLoaded", function() {
 
   var params = new URLSearchParams(location.search);
   var activeSymbol = params.get("symbol") || null;
-  var activeCountryCode = "";
+  var preferredCountry = await Finora.countryReady.catch(function() { return Finora.getMarketCountry(); });
+  var activeCountryCode = params.get("country") || (!activeSymbol && preferredCountry ? preferredCountry.code : "");
+  var activeMarketOptions = {
+    exchange: params.get("exchange") || "",
+    country: params.get("country") || "",
+    name: params.get("name") || "",
+    logoSymbol: params.get("logo") || "",
+  };
   var searchTimer = null;
   var searchRun = 0;
   var countrySearchTimer = null;
@@ -85,15 +72,31 @@ document.addEventListener("DOMContentLoaded", function() {
     detailViewEl.classList.remove("d-none");
   }
 
-  function openDetail(symbol) {
-    activeSymbol = symbol;
-    history.pushState(null, "", "market.html?symbol=" + symbol);
+  function openDetail(stock) {
+    if (typeof stock === "string") stock = { symbol: stock, country: activeCountryCode };
+    activeSymbol = stock.symbol;
+    activeMarketOptions = {
+      exchange: stock.exchange || "",
+      country: stock.country || activeCountryCode || "",
+      name: stock.name || "",
+      currency: stock.currency || "",
+      logoSymbol: stock.logoSymbol || stock.symbol,
+    };
+    var nextParams = new URLSearchParams({ symbol: activeSymbol });
+    Object.keys(activeMarketOptions).forEach(function(key) {
+      if (activeMarketOptions[key]) nextParams.set(key === "logoSymbol" ? "logo" : key, activeMarketOptions[key]);
+    });
+    history.pushState(null, "", "market.html?" + nextParams.toString());
     showDetailView();
-    initDetail(symbol);
+    initDetail(activeSymbol, activeMarketOptions);
   }
 
   /* ============================ Browse hub ========================= */
   function initBrowse() {
+    if (activeCountryCode) {
+      var initialCountry = findCountryByCode(activeCountryCode);
+      if (initialCountry) browseCountryEl.value = countryLabel(initialCountry);
+    }
     browseSearchEl.addEventListener("input", handleBrowseSearch);
     browseSearchEl.addEventListener("focus", handleBrowseSearch);
     browseCountryEl.addEventListener("input", handleCountrySearch);
@@ -121,6 +124,8 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function stockCountry(stock) {
+    var country = Finora.findCountry(stock.country);
+    if (country) return country.code;
     var exchange = (stock.exchange || "").toUpperCase();
     return EXCHANGE_COUNTRY[exchange] || "US";
   }
@@ -134,17 +139,10 @@ document.addEventListener("DOMContentLoaded", function() {
     var q = browseCountryEl.value.trim().toLowerCase();
     clearTimeout(countrySearchTimer);
 
-    if (!q) {
-      browseCountryResultsEl.classList.add("d-none");
-      browseCountryResultsEl.innerHTML = "";
-      if (activeCountryCode) {
-        activeCountryCode = "";
-        reloadBrowseData();
-      }
-      return;
-    }
+    var activeCountry = findCountryByCode(activeCountryCode);
+    if (activeCountry && q === countryLabel(activeCountry).toLowerCase()) q = "";
 
-    if (q.length < 2) {
+    if (q.length === 1) {
       browseCountryResultsEl.classList.remove("d-none");
       browseCountryResultsEl.innerHTML = `<div class="text-muted-2 small p-3">Type at least 2 characters…</div>`;
       return;
@@ -165,7 +163,10 @@ document.addEventListener("DOMContentLoaded", function() {
       }
 
       browseCountryResultsEl.classList.remove("d-none");
-      browseCountryResultsEl.innerHTML = matches
+      browseCountryResultsEl.innerHTML = `<button type="button" class="market-search-result" data-country="">
+          <span class="market-country-flag" aria-hidden="true">🌐</span>
+          <span class="fw-semibold text-white">Worldwide</span>
+        </button>` + matches
         .map(function(country) {
           return `<button type="button" class="market-search-result" data-country="${country.code}">
               <span class="market-country-flag" aria-hidden="true">${country.flag}</span>
@@ -180,11 +181,12 @@ document.addEventListener("DOMContentLoaded", function() {
         btn.addEventListener("click", function() {
           var code = btn.getAttribute("data-country");
           var country = findCountryByCode(code);
-          if (!country) return;
-          activeCountryCode = code;
-          browseCountryEl.value = countryLabel(country);
+          activeCountryCode = country ? code : "";
+          browseCountryEl.value = country ? countryLabel(country) : "";
           browseCountryResultsEl.classList.add("d-none");
+          if (country) Finora.setMarketCountry(country);
           reloadBrowseData();
+          if (browseSearchEl.value.trim().length >= 2) handleBrowseSearch();
         });
       });
     }, 200);
@@ -239,7 +241,8 @@ document.addEventListener("DOMContentLoaded", function() {
       try {
         var trending = await FinoraAPI.getTrending();
         local = trending.filter(function(c) {
-          return c.symbol.toLowerCase().includes(q) || (c.name || "").toLowerCase().includes(q);
+          var textMatch = c.symbol.toLowerCase().includes(q) || (c.name || "").toLowerCase().includes(q);
+          return textMatch && (!activeCountryCode || stockCountry(c) === activeCountryCode);
         });
       } catch (err) {
         local = [];
@@ -247,16 +250,12 @@ document.addEventListener("DOMContentLoaded", function() {
 
       var results = local;
       try {
-        var remote = await FinoraAPI.searchCompanies(q, 8);
+        var remote = await FinoraAPI.searchCompanies(q, 12, activeCountryCode);
         if (run !== searchRun) return;
         results = mergeCompanies(local, remote);
       } catch (err) {
         if (run !== searchRun) return;
         results = local;
-      }
-
-      if (activeCountryCode) {
-        results = results.filter(function(c) { return stockCountry(c) === activeCountryCode; });
       }
 
       if (!results.length) {
@@ -265,12 +264,12 @@ document.addEventListener("DOMContentLoaded", function() {
       }
 
       browseResultsEl.innerHTML = results
-        .map(function(c) {
-          return `<button type="button" class="market-search-result" data-pick="${c.symbol}">
-              ${Finora.tickerAvatar(c.symbol, { size: "sm", color: c.color })}
+        .map(function(c, index) {
+          return `<button type="button" class="market-search-result" data-pick="${index}">
+              ${Finora.tickerAvatar(c.symbol, { size: "sm", color: c.color, logoSymbol: c.logoSymbol })}
               <span class="min-w-0">
                 <span class="d-block fw-semibold text-white text-truncate">${c.symbol}</span>
-                <span class="d-block text-muted-2 small text-truncate">${c.name || ""}</span>
+                <span class="d-block text-muted-2 small text-truncate">${c.name || ""}${c.exchange ? " · " + c.exchange : ""}${c.country ? " · " + c.country : ""}</span>
               </span>
             </button>`;
         })
@@ -280,7 +279,7 @@ document.addEventListener("DOMContentLoaded", function() {
         btn.addEventListener("click", function() {
           browseSearchEl.value = "";
           browseResultsEl.classList.add("d-none");
-          openDetail(btn.getAttribute("data-pick"));
+          openDetail(results[Number(btn.getAttribute("data-pick"))]);
         });
       });
     }, 350);
@@ -321,45 +320,46 @@ document.addEventListener("DOMContentLoaded", function() {
 
   async function loadTrending() {
     var body = document.getElementById("trendingBody");
+    var title = document.getElementById("trendingTitle");
     if (!body) return;
+    var selectedCountry = findCountryByCode(activeCountryCode);
+    if (title) title.textContent = selectedCountry ? "Stocks in " + selectedCountry.name : "Trending stocks";
     try {
-      var stocks = await FinoraAPI.getTrending();
-      if (activeCountryCode) {
-        stocks = stocks.filter(function(s) { return stockCountry(s) === activeCountryCode; });
-      }
+      var stocks = await FinoraAPI.getTrending(activeCountryCode);
       if (!stocks.length) { body.innerHTML = Finora.emptyRow(6, activeCountryCode ? "No trending stocks for this market." : Finora.API_UNAVAILABLE_MSG); return; }
       body.innerHTML = stocks
         .map(function(s, i) {
-          var up = s.change >= 0;
-          return `<tr class="trending-row" data-symbol="${s.symbol}">
+          var hasQuote = Number.isFinite(s.price) && Number.isFinite(s.change);
+          var up = hasQuote && s.change >= 0;
+          return `<tr class="${hasQuote ? "trending-row" : ""}"${hasQuote ? ` data-symbol="${s.symbol}" data-stock-index="${i}"` : ""}>
               <td>
                 <div class="d-flex align-items-center gap-3">
-                  ${Finora.tickerAvatar(s.symbol, { color: s.color })}
+                  ${Finora.tickerAvatar(s.symbol, { color: s.color, logoSymbol: s.logoSymbol })}
                   <div>
                     <div class="fw-bold text-white">${s.symbol}</div>
-                    <div class="text-muted-2 small">${s.name || ""}</div>
+                    <div class="text-muted-2 small">${s.name || ""}${s.exchange ? " · " + s.exchange : ""}</div>
                   </div>
                 </div>
               </td>
-              <td class="text-end fw-semibold text-white">${Finora.fmtMoney(s.price)}</td>
+              <td class="text-end fw-semibold text-white">${hasQuote ? Finora.fmtMoney(s.price, s.currency) : "—"}</td>
               <td class="text-end">
-                <span class="badge ${up ? "badge-bull" : "badge-bear"}">
+                ${hasQuote ? `<span class="badge ${up ? "badge-bull" : "badge-bear"}">
                   <i class="bi bi-caret-${up ? "up" : "down"}-fill"></i> ${Math.abs(s.change).toFixed(2)}%
-                </span>
+                </span>` : `<span class="text-muted-2 small">Quote unavailable</span>`}
               </td>
               <td class="text-end d-none d-md-table-cell">${s.cap ? "$" + s.cap : "—"}</td>
               <td class="text-end d-none d-lg-table-cell" style="width:130px">
-                ${s.history ? `<canvas id="rowChart${i}" height="36" width="120"></canvas>` : "—"}
+                ${s.history && s.history.length ? `<canvas id="rowChart${i}" height="36" width="120"></canvas>` : "—"}
               </td>
               <td class="text-end">
-                <button type="button" class="btn btn-sm btn-outline-brand" data-trade="${s.symbol}">Trade</button>
+                <button type="button" class="btn btn-sm btn-outline-brand" ${hasQuote ? `data-trade="${s.symbol}" data-stock-index="${i}"` : "disabled title=\"Live quote unavailable on the current market-data plan\""}>${hasQuote ? "Trade" : "Listed"}</button>
               </td>
             </tr>`;
         })
         .join("");
 
       stocks.forEach(function(s, i) {
-        if (s.history) {
+        if (s.history && s.history.length) {
           FinoraChart.sparkline(document.getElementById("rowChart" + i), s.history, s.change >= 0 ? C("--bull") : C("--bear"), { responsive: false });
         }
       });
@@ -367,14 +367,14 @@ document.addEventListener("DOMContentLoaded", function() {
       body.querySelectorAll(".trending-row").forEach(function(row) {
         row.addEventListener("click", function(e) {
           if (e.target.closest("[data-trade]")) return;
-          openDetail(row.getAttribute("data-symbol"));
+          openDetail(stocks[Number(row.getAttribute("data-stock-index"))]);
         });
       });
 
       body.querySelectorAll("[data-trade]").forEach(function(btn) {
         btn.addEventListener("click", function(e) {
           e.stopPropagation();
-          openDetail(btn.getAttribute("data-trade"));
+          openDetail(stocks[Number(btn.getAttribute("data-stock-index"))]);
         });
       });
     } catch (err) {
@@ -415,9 +415,9 @@ document.addEventListener("DOMContentLoaded", function() {
         return;
       }
       wrap.innerHTML = stocks.map(function(s) { return renderMoverItem(s, isGainer); }).join("");
-      wrap.querySelectorAll("[data-symbol]").forEach(function(btn) {
+      wrap.querySelectorAll("[data-symbol]").forEach(function(btn, index) {
         btn.addEventListener("click", function() {
-          openDetail(btn.getAttribute("data-symbol"));
+          openDetail(Object.assign({}, stocks[index], { country: stocks[index].country || activeCountryCode }));
         });
       });
     } catch (err) {
@@ -426,9 +426,10 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   /* ============================ Detail view ======================== */
-  function initDetail(symbol) {
+  function initDetail(symbol, options) {
     activeSymbol = symbol;
-    loadDetail(symbol);
+    activeMarketOptions = options || activeMarketOptions || {};
+    loadDetail(symbol, activeMarketOptions);
   }
 
   function mergeCompanies(primary, secondary) {
@@ -436,20 +437,21 @@ document.addEventListener("DOMContentLoaded", function() {
     var result = [];
     var combined = primary.concat(secondary);
     combined.forEach(function(item) {
-      if (item && item.symbol && !seen[item.symbol]) {
-        seen[item.symbol] = true;
+      var key = item && [item.symbol, item.exchange, item.country].join(":");
+      if (item && item.symbol && !seen[key]) {
+        seen[key] = true;
         result.push(item);
       }
     });
     return result;
   }
 
-  async function loadDetail(symbol) {
+  async function loadDetail(symbol, options) {
     var run = ++detailRun;
     detailEl.innerHTML = Finora.emptyState("Loading " + symbol.toUpperCase() + "...", "bi-hourglass-split");
     var s;
     try {
-      s = await FinoraAPI.getStock(symbol);
+      s = await FinoraAPI.getStock(symbol, options);
     } catch (err) {
       s = null;
     }
@@ -478,7 +480,7 @@ document.addEventListener("DOMContentLoaded", function() {
       <div class="card-finora p-4 mb-4">
         <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
           <div class="d-flex align-items-center gap-3">
-            ${Finora.tickerAvatar(s.symbol, { size: "lg", color: s.color })}
+            ${Finora.tickerAvatar(s.symbol, { size: "lg", color: s.color, logoSymbol: activeMarketOptions.logoSymbol })}
             <div>
               <h4 class="fw-bold mb-0">${s.name}</h4>
               <div class="text-muted-2 small">${s.exchange || ""} - ${s.symbol}${s.sector ? " - " + s.sector : ""}</div>
@@ -609,7 +611,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     var ohlc = [];
     try {
-      ohlc = await FinoraAPI.getOHLC(symbol, range);
+      ohlc = await FinoraAPI.getOHLC(symbol, range, activeMarketOptions);
     } catch (err) {
       wrap.innerHTML = Finora.apiUnavailableState("bi-graph-up");
       return;
@@ -640,7 +642,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var body = document.getElementById("historyBody");
     var data = [];
     try {
-      data = await FinoraAPI.getHistory(symbol, "1M");
+      data = await FinoraAPI.getHistory(symbol, "1M", activeMarketOptions);
     } catch (err) {
       body.innerHTML = Finora.emptyRow(3, Finora.API_UNAVAILABLE_MSG);
       return;
@@ -725,11 +727,18 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   window.addEventListener("popstate", function() {
-    var sym = new URLSearchParams(location.search).get("symbol");
+    var popped = new URLSearchParams(location.search);
+    var sym = popped.get("symbol");
     if (sym) {
       activeSymbol = sym;
+      activeMarketOptions = {
+        exchange: popped.get("exchange") || "",
+        country: popped.get("country") || "",
+        name: popped.get("name") || "",
+        logoSymbol: popped.get("logo") || "",
+      };
       showDetailView();
-      initDetail(sym);
+      initDetail(sym, activeMarketOptions);
     } else {
       showBrowseView();
     }

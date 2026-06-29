@@ -21,6 +21,7 @@ const FinoraAPI = (() => {
   const QUOTE_CACHE_TTL = 60 * 1000;
   const HISTORY_CACHE_TTL = 5 * 60 * 1000;
   const NEWS_CACHE_TTL = 15 * 60 * 1000;
+  const CATALOG_CACHE_TTL = 24 * 60 * 60 * 1000;
   const MOVERS_CACHE_TTL = 60 * 60 * 1000;
   const MOVERS_STORAGE_KEY = "finora_market_movers";
   const API_UNAVAILABLE_MSG = "API is currently unavailable, please try again later or reload the page.";
@@ -75,8 +76,8 @@ const FinoraAPI = (() => {
   const cache = new Map();
   const bySymbol = new Map(COMPANY_CATALOG.map((item) => [item.symbol, item]));
 
-  function company(symbol, name, exchange, sector) {
-    return { symbol, name, exchange, sector };
+  function company(symbol, name, exchange, sector, country = "US", currency = "USD") {
+    return { symbol, name, exchange, sector, country, currency };
   }
 
   function hasFinnhubKey() {
@@ -147,14 +148,17 @@ const FinoraAPI = (() => {
     }
   }
 
-  async function timeSeries(symbol, outputsize = 60) {
+  async function timeSeries(symbol, outputsize = 60, options = {}) {
     requireTwelveKey();
     const url = new URL(TWELVE_BASE + "/time_series");
     url.searchParams.set("symbol", symbol);
     url.searchParams.set("interval", "1day");
     url.searchParams.set("outputsize", outputsize);
+    if (options.exchange) url.searchParams.set("exchange", options.exchange);
+    if (options.country) url.searchParams.set("country", options.country);
     url.searchParams.set("apikey", TWELVE_DATA_API_KEY);
-    return withCache(`time:${symbol}:${outputsize}`, HISTORY_CACHE_TTL, () => fetchJson(url.toString()));
+    const marketKey = `${options.exchange || ""}:${options.country || ""}`;
+    return withCache(`time:${symbol}:${outputsize}:${marketKey}`, HISTORY_CACHE_TTL, () => fetchJson(url.toString()));
   }
 
   async function quote(symbol) {
@@ -173,6 +177,24 @@ const FinoraAPI = (() => {
     return withCache(`search:${query.toLowerCase()}`, HISTORY_CACHE_TTL, () => fetchJson(url.toString()));
   }
 
+  async function twelveSymbolSearch(query, outputsize = 30) {
+    requireTwelveKey();
+    const url = new URL(TWELVE_BASE + "/symbol_search");
+    url.searchParams.set("symbol", query);
+    url.searchParams.set("outputsize", String(outputsize));
+    url.searchParams.set("apikey", TWELVE_DATA_API_KEY);
+    return withCache(`symbol-search:${query.toLowerCase()}:${outputsize}`, HISTORY_CACHE_TTL, () => fetchJson(url.toString()));
+  }
+
+  async function stockCatalog(country, outputsize = 120) {
+    requireTwelveKey();
+    const url = new URL(TWELVE_BASE + "/stocks");
+    url.searchParams.set("country", country);
+    url.searchParams.set("outputsize", String(outputsize));
+    url.searchParams.set("apikey", TWELVE_DATA_API_KEY);
+    return withCache(`stocks:${country.toUpperCase()}:${outputsize}`, CATALOG_CACHE_TTL, () => fetchJson(url.toString()));
+  }
+
   async function companyNews(symbol) {
     requireFinnhubKey();
     const to = new Date();
@@ -186,16 +208,31 @@ const FinoraAPI = (() => {
     return withCache(`news:${symbol}`, NEWS_CACHE_TTL, () => fetchJson(url.toString()));
   }
 
-  function metaFor(symbol) {
+  function metaFor(symbol, options = {}) {
     const normalized = (symbol || "").trim().toUpperCase();
-    return bySymbol.get(normalized) || company(normalized, normalized, "", "");
+    return Object.assign(
+      {},
+      bySymbol.get(normalized) || company(normalized, normalized, "", "", "", ""),
+      Object.fromEntries(Object.entries(options).filter(([, value]) => value != null && value !== ""))
+    );
   }
 
-  async function getStock(symbol) {
+  async function getStock(symbol, options = {}) {
     const normalized = symbol.trim().toUpperCase();
-    const meta = metaFor(normalized);
-    const q = await quote(normalized);
-    return mapQuote(normalized, meta, q);
+    const meta = metaFor(normalized, options);
+    const isInternational = meta.country && meta.country !== "US" && meta.country !== "United States";
+
+    if (!isInternational && hasFinnhubKey()) {
+      try {
+        const q = await quote(normalized);
+        return mapQuote(normalized, meta, q);
+      } catch {
+        /* Twelve Data provides a reliable exchange-aware fallback. */
+      }
+    }
+
+    const series = await timeSeries(normalized, 60, meta);
+    return mapSeries(normalized, meta, series);
   }
 
   function mapQuote(symbol, meta, data) {
@@ -210,6 +247,8 @@ const FinoraAPI = (() => {
       price,
       change: percentChange,
       exchange: meta.exchange,
+      country: meta.country || "",
+      currency: meta.currency || "USD",
       sector: meta.sector || "",
       about: `${meta.name || symbol} is listed${meta.exchange ? ` on ${meta.exchange}` : ""}${meta.sector ? ` in the ${meta.sector} sector` : ""}.`,
       open: round(Number(data.o)),
@@ -246,6 +285,8 @@ const FinoraAPI = (() => {
       price,
       change: changePct(price, prevClose),
       exchange,
+      country: meta.country || "",
+      currency: data.meta?.currency || meta.currency || "USD",
       sector,
       about: `${meta.name || symbol} is listed${exchange ? ` on ${exchange}` : ""}${sector ? ` in the ${sector} sector` : ""}.`,
       open: round(Number(latest.open)),
@@ -275,17 +316,18 @@ const FinoraAPI = (() => {
     }
   }
 
-  async function getHistory(symbol, range = "1M") {
+  async function getHistory(symbol, range = "1M", options = {}) {
     const normalized = symbol.trim().toUpperCase();
     const points = rangePoints(range);
-    const data = await timeSeries(normalized, Math.max(points, 60));
-    return mapSeries(normalized, metaFor(normalized), data).history.slice(-points);
+    const meta = metaFor(normalized, options);
+    const data = await timeSeries(normalized, Math.max(points, 60), meta);
+    return mapSeries(normalized, meta, data).history.slice(-points);
   }
 
-  async function getOHLC(symbol, range = "1M") {
+  async function getOHLC(symbol, range = "1M", options = {}) {
     const normalized = symbol.trim().toUpperCase();
     const points = rangePoints(range);
-    const data = await timeSeries(normalized, Math.max(points, 60));
+    const data = await timeSeries(normalized, Math.max(points, 60), metaFor(normalized, options));
     const values = [...(data.values || [])].reverse();
     if (!values.length) throw new Error(API_UNAVAILABLE_MSG);
     return values.slice(-points).map((row) => ({
@@ -306,7 +348,41 @@ const FinoraAPI = (() => {
     return out;
   }
 
-  async function getTrending() {
+  async function getCountryStocks(country, limit = 10) {
+    const data = await stockCatalog(country, 120);
+    const seenCompanies = new Set();
+    const primaryListings = (data.data || [])
+      .filter((item) => item.symbol && /common stock|reit/i.test(item.type || ""))
+      .filter((item) => !/cboe|otc/i.test(item.exchange || "") && !/^B?CXE$/i.test(item.mic_code || ""))
+      .filter((item) => {
+        const key = String(item.name || item.symbol).trim().toLowerCase();
+        if (seenCompanies.has(key)) return false;
+        seenCompanies.add(key);
+        return true;
+      })
+      .slice(0, limit)
+      .map((item) => ({
+        symbol: item.symbol.toUpperCase(),
+        name: item.name || item.symbol,
+        exchange: item.exchange || "",
+        micCode: item.mic_code || "",
+        country: item.country || country,
+        currency: item.currency || "",
+        logoSymbol: logoTicker(item.symbol.toUpperCase(), item.exchange, item.country, item.mic_code),
+        sector: "",
+        price: null,
+        change: null,
+        history: [],
+      }));
+
+    if (!primaryListings.length) throw new Error(API_UNAVAILABLE_MSG);
+    return primaryListings;
+  }
+
+  async function getTrending(country = "") {
+    if (country && country.toUpperCase() !== "US") {
+      return getCountryStocks(country, 10);
+    }
     if (!hasFinnhubKey()) {
       return DEFAULT_SYMBOLS.map(function (symbol) {
         return { ...metaFor(symbol), price: null, change: null, history: [] };
@@ -444,15 +520,68 @@ const FinoraAPI = (() => {
     });
   }
 
-  async function searchCompanies(query, limit = 8) {
+  function countryMatches(value, selectedCountry) {
+    if (!selectedCountry) return true;
+    const selected = typeof Finora !== "undefined" && Finora.findCountry
+      ? Finora.findCountry(selectedCountry)
+      : null;
+    const wantedCode = selected ? selected.code : selectedCountry.toUpperCase();
+    const wantedName = selected ? selected.name.toLowerCase() : "";
+    const actual = String(value || "").trim();
+    return actual.toUpperCase() === wantedCode || actual.toLowerCase() === wantedName;
+  }
+
+  function logoTicker(symbol, exchange, country, micCode = "") {
+    const suffixByExchange = {
+      LSE: "LN", XETR: "GR", FSX: "GR", XSTU: "GR", SWX: "SW",
+      TSX: "CN", ASX: "AU", TSE: "JP", HKEX: "HK", NSE: "IN",
+      BSE: "IN", MTA: "IM", SGX: "SP", KRX: "KP",
+    };
+    const suffixByMic = {
+      XBRU: "BB", XLON: "LN", XETR: "GR", XSWX: "SW", XTSE: "CN",
+      XASX: "AU", XTKS: "JP", XHKG: "HK", XNSE: "IN", XBOM: "IN",
+      XMIL: "IM", XSES: "SP", XKRX: "KP",
+    };
+    const suffix = suffixByMic[String(micCode || "").toUpperCase()]
+      || suffixByExchange[String(exchange || "").toUpperCase()];
+    if (!suffix || country === "US" || country === "United States") return symbol;
+    return `${symbol}:${suffix}`;
+  }
+
+  async function searchCompanies(query, limit = 8, country = "") {
     const q = query.trim().toLowerCase();
     if (q.length < 2) return [];
     const matches = COMPANY_CATALOG
+      .filter((c) => countryMatches(c.country, country))
       .filter((c) => c.symbol.toLowerCase().includes(q) || c.name.toLowerCase().includes(q))
       .slice(0, limit);
 
     let remote = [];
-    if (hasFinnhubKey()) {
+    if (hasTwelveKey()) {
+      try {
+        const data = await twelveSymbolSearch(q, country ? 120 : Math.max(limit * 3, 30));
+        remote = (data.data || [])
+          .filter((item) => item.symbol && /stock|depositary receipt|reit/i.test(item.instrument_type || ""))
+          .filter((item) => countryMatches(item.country, country))
+          .map((item) => ({
+            symbol: item.symbol.toUpperCase(),
+            name: item.instrument_name || item.symbol,
+            exchange: item.exchange || "",
+            micCode: item.mic_code || "",
+            country: item.country || "",
+            currency: item.currency || "",
+            logoSymbol: logoTicker(item.symbol.toUpperCase(), item.exchange, item.country, item.mic_code),
+            sector: "",
+            price: null,
+            change: null,
+            history: [],
+          }));
+      } catch {
+        remote = [];
+      }
+    }
+
+    if (!remote.length && !country && hasFinnhubKey()) {
       try {
         const data = await companySearch(q);
         remote = (data.result || [])
@@ -464,6 +593,9 @@ const FinoraAPI = (() => {
               symbol,
               name: item.description || meta.name || symbol,
               exchange: meta.exchange,
+              country: meta.country || "",
+              currency: meta.currency || "",
+              logoSymbol: symbol,
               sector: meta.sector,
               price: null,
               change: null,
@@ -477,7 +609,8 @@ const FinoraAPI = (() => {
 
     const bySymbol = new Map();
     [...matches, ...remote].forEach((item) => {
-      if (item?.symbol && !bySymbol.has(item.symbol)) bySymbol.set(item.symbol, { ...item, price: null, change: null, history: [] });
+      const key = `${item?.symbol || ""}:${item?.exchange || ""}:${item?.country || ""}`;
+      if (item?.symbol && !bySymbol.has(key)) bySymbol.set(key, { ...item, price: null, change: null, history: [] });
     });
     return [...bySymbol.values()].slice(0, limit);
   }

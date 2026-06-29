@@ -5,6 +5,7 @@
 document.addEventListener("DOMContentLoaded", async function() {
   var fbUser = await Finora.requireAuth(); // redirects if not logged in
   if (!fbUser) return;
+  await Finora.countryReady.catch(function() {});
   var user = Finora.getProfile();
   var css = getComputedStyle(document.documentElement);
   function C(n) { return css.getPropertyValue(n).trim(); }
@@ -150,11 +151,15 @@ document.addEventListener("DOMContentLoaded", async function() {
 
   /* -------------------------- Settings ---------------------------- */
   var settingsForm = document.getElementById("settingsForm");
+  settingsForm.country.innerHTML = Finora.countries.map(function(country) {
+    return `<option value="${country.name}" data-code="${country.code}">${country.flag} ${country.name}</option>`;
+  }).join("");
   settingsForm.name.value = user.name;
   settingsForm.email.value = user.email;
   settingsForm.phone.value = user.phone || "";
   settingsForm.bio.value = user.bio || "";
-  if (user.country) settingsForm.country.value = user.country;
+  var profileCountry = Finora.findCountry(user.countryCode || user.country);
+  if (profileCountry) settingsForm.country.value = profileCountry.name;
 
   settingsForm.addEventListener("submit", async function(e) {
     e.preventDefault();
@@ -164,6 +169,7 @@ document.addEventListener("DOMContentLoaded", async function() {
         email: settingsForm.email.value.trim(),
         phone: settingsForm.phone.value.trim(),
         country: settingsForm.country.value,
+        countryCode: settingsForm.country.selectedOptions[0].dataset.code,
         bio: settingsForm.bio.value.trim(),
       });
       if (updated) {
