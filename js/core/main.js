@@ -184,16 +184,20 @@ var Finora = (function() {
   }
 
   async function resolveMarketCountry() {
-    var profile = getProfile();
-    var fromProfile = profile && findMarketCountry(profile.countryCode || profile.country);
-    if (fromProfile) return setMarketCountry(fromProfile, false);
-
+    // 1. Prioritize the market-specific preference from localStorage.
     var stored = readMarketCountry();
     if (stored) {
-      saveCountryToCurrentUser(stored);
       return stored;
     }
 
+    // 2. If no market preference, fall back to the user's profile country.
+    var profile = getProfile();
+    var fromProfile = profile && findMarketCountry(profile.countryCode || profile.country);
+    if (fromProfile) {
+      return setMarketCountry(fromProfile, false);
+    }
+
+    // 3. If no preference anywhere, detect location and set it for both.
     var detected = await detectMarketCountry();
     return setMarketCountry(detected || "US", true);
   }
@@ -630,31 +634,28 @@ var Finora = (function() {
 
   function getProfile() {
     if (!currentUser) return null;
+
+    var baseProfile, extras;
     if (!USE_FIREBASE) {
-      var u = currentUser;
-      return {
-        uid: u.uid, name: u.name, email: u.email, joined: u.joined,
-        plan: normalizePlan(u.plan), balance: u.balance != null ? u.balance : 0,
-        currency: normalizeCurrency(u.currency),
-        phone: u.phone || "", country: u.country || (readMarketCountry() || {}).name || "",
-        countryCode: u.countryCode || (readMarketCountry() || {}).code || "", bio: u.bio || "",
-      };
+      baseProfile = currentUser;
+      extras = currentUser; // In local mode, extras are part of the user object
+    } else {
+      baseProfile = currentUser;
+      extras = getExtras(currentUser.uid);
     }
-    var extras = getExtras(currentUser.uid);
-    var metadata = currentUser.metadata;
-    var creationTime = metadata && metadata.creationTime ? metadata.creationTime : new Date().toISOString();
+
+    var profileCountry = findMarketCountry(extras.countryCode || extras.country);
+
     return {
-      uid: currentUser.uid,
-      name: currentUser.displayName || (currentUser.email || "").split("@")[0],
-      email: currentUser.email,
-      joined: creationTime,
+      uid: baseProfile.uid,
+      name: baseProfile.displayName || baseProfile.name || (baseProfile.email || "").split("@")[0],
+      email: baseProfile.email,
+      joined: (baseProfile.metadata && baseProfile.metadata.creationTime) || baseProfile.joined || new Date().toISOString(),
       plan: normalizePlan(extras.plan),
       balance: extras.balance != null ? extras.balance : 0,
       currency: normalizeCurrency(extras.currency),
-      phone: extras.phone || "",
-      country: extras.country || (readMarketCountry() || {}).name || "",
-      countryCode: extras.countryCode || (readMarketCountry() || {}).code || "",
-      bio: extras.bio || "",
+      country: profileCountry ? profileCountry.name : "",
+      countryCode: profileCountry ? profileCountry.code : "",
     };
   }
 
@@ -663,9 +664,10 @@ var Finora = (function() {
     if (patch.country || patch.countryCode) {
       var selectedCountry = findMarketCountry(patch.countryCode || patch.country);
       if (selectedCountry) {
-        patch.country = selectedCountry.name;
         patch.countryCode = selectedCountry.code;
-        setMarketCountry(selectedCountry, false);
+        // Only store the country code as the source of truth.
+        // The full name will be derived on-the-fly by getProfile().
+        delete patch.country;
       }
     }
     if (!USE_FIREBASE) {
@@ -841,9 +843,9 @@ var Finora = (function() {
       ? ' class="nav-user-btn" type="button" tabindex="-1" aria-hidden="true"'
       : ' class="nav-user-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu"';
     var menu = pending ? "" : `
-            <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark border-finora">
+            <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark border-finora dropdown-menu-finora">
               <li><a class="dropdown-item" href="profile.html"><i class="bi bi-person me-2"></i>My Profile</a></li>
-              <li><hr class="dropdown-divider border-finora"></li>
+              <li><hr class="dropdown-divider"></li>
               <li><button class="dropdown-item" type="button" data-nav-logout><i class="bi bi-box-arrow-right me-2"></i>Log out</button></li>
             </ul>`;
     return `<div class="d-flex align-items-center gap-3${pendingCls}">

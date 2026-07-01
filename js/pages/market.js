@@ -184,7 +184,7 @@ document.addEventListener("DOMContentLoaded", async function() {
           activeCountryCode = country ? code : "";
           browseCountryEl.value = country ? countryLabel(country) : "";
           browseCountryResultsEl.classList.add("d-none");
-          if (country) Finora.setMarketCountry(country);
+          if (country) Finora.setMarketCountry(country, false);
           reloadBrowseData();
           if (browseSearchEl.value.trim().length >= 2) handleBrowseSearch();
         });

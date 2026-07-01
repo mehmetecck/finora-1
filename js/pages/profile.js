@@ -10,6 +10,10 @@ document.addEventListener("DOMContentLoaded", async function() {
   var css = getComputedStyle(document.documentElement);
   function C(n) { return css.getPropertyValue(n).trim(); }
 
+  var selectedCountry = null;
+  var countrySearchTimer = null;
+  var countrySearchRun = 0;
+  var MARKET_COUNTRIES = Finora.countries;
   /* --------------------------- Header ----------------------------- */
   document.getElementById("avatar").textContent = Finora.initials(user.name);
   document.getElementById("profileName").textContent = user.name;
@@ -149,29 +153,94 @@ document.addEventListener("DOMContentLoaded", async function() {
     });
   }
 
+  /* --------------------- Country search ------------------------- */
+  function findCountryByCode(code) {
+    return MARKET_COUNTRIES.find(function(c) { return c.code === code; }) || null;
+  }
+
+  function countryLabel(country) {
+    return country.flag + " " + country.name;
+  }
+
+  function renderCountryResults(matches) {
+    var countryResultsEl = document.getElementById("countryResults");
+    if (!matches.length) {
+      countryResultsEl.innerHTML = `<div class="text-muted-2 small p-3">No matches found.</div>`;
+      return;
+    }
+
+    countryResultsEl.innerHTML = matches
+      .map(function(country) {
+        return `<button type="button" class="market-search-result" data-code="${country.code}">
+            <span class="market-country-flag" aria-hidden="true">${country.flag}</span>
+            <span class="min-w-0">
+              <span class="d-block fw-semibold text-white text-truncate">${country.name}</span>
+            </span>
+          </button>`;
+      })
+      .join("");
+
+    countryResultsEl.querySelectorAll("[data-code]").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        var code = btn.getAttribute("data-code");
+        var country = findCountryByCode(code);
+        if (country) {
+          selectedCountry = country;
+          document.querySelector('#settingsForm [name="country"]').value = countryLabel(country);
+        }
+        countryResultsEl.classList.add("d-none");
+      });
+    });
+  }
+
+  function handleCountrySearch() {
+    var countryInput = document.querySelector('#settingsForm [name="country"]');
+    var countryResultsEl = document.getElementById("countryResults");
+    var q = countryInput.value.trim().toLowerCase();
+    clearTimeout(countrySearchTimer);
+
+    if (selectedCountry && q === countryLabel(selectedCountry).toLowerCase()) q = "";
+    if (!q) { countryResultsEl.classList.add("d-none"); return; }
+    if (q.length < 2) {
+      countryResultsEl.classList.remove("d-none");
+      countryResultsEl.innerHTML = `<div class="text-muted-2 small p-3">Type at least 2 characters…</div>`;
+      return;
+    }
+
+    var run = ++countrySearchRun;
+    countrySearchTimer = setTimeout(function() {
+      if (run !== countrySearchRun) return;
+      var matches = MARKET_COUNTRIES.filter(function(c) {
+        return c.name.toLowerCase().indexOf(q) !== -1 || c.code.toLowerCase().indexOf(q) === 0;
+      });
+      countryResultsEl.classList.remove("d-none");
+      renderCountryResults(matches);
+    }, 200);
+  }
+
   /* -------------------------- Settings ---------------------------- */
   var settingsForm = document.getElementById("settingsForm");
-  settingsForm.country.innerHTML = Finora.countries.map(function(country) {
-    return `<option value="${country.name}" data-code="${country.code}">${country.flag} ${country.name}</option>`;
-  }).join("");
+  var countryInput = settingsForm.querySelector('[name="country"]');
   settingsForm.name.value = user.name;
   settingsForm.email.value = user.email;
-  settingsForm.phone.value = user.phone || "";
-  settingsForm.bio.value = user.bio || "";
+
   var profileCountry = Finora.findCountry(user.countryCode || user.country);
-  if (profileCountry) settingsForm.country.value = profileCountry.name;
+  if (profileCountry) {
+    selectedCountry = profileCountry;
+    countryInput.value = countryLabel(profileCountry);
+  }
 
   settingsForm.addEventListener("submit", async function(e) {
     e.preventDefault();
     try {
-      var updated = await Finora.updateProfile({
+      var patch = {
         name: settingsForm.name.value.trim(),
         email: settingsForm.email.value.trim(),
-        phone: settingsForm.phone.value.trim(),
-        country: settingsForm.country.value,
-        countryCode: settingsForm.country.selectedOptions[0].dataset.code,
-        bio: settingsForm.bio.value.trim(),
-      });
+      };
+      if (selectedCountry) {
+        patch.countryCode = selectedCountry.code;
+      }
+      var updated = await Finora.updateProfile(patch);
       if (updated) {
         document.getElementById("profileName").textContent = updated.name;
         document.getElementById("profileEmail").textContent = updated.email;
@@ -181,6 +250,13 @@ document.addEventListener("DOMContentLoaded", async function() {
     } catch (err) {
       Finora.toast(Finora.mapAuthError(err.code), "error");
     }
+  });
+
+  countryInput.addEventListener("input", handleCountrySearch);
+  countryInput.addEventListener("focus", handleCountrySearch);
+  document.addEventListener("click", function(e) {
+    var resultsEl = document.getElementById("countryResults");
+    if (resultsEl && !e.target.closest(".position-relative")) resultsEl.classList.add("d-none");
   });
 
   /* ------------------------ Currency preference ----------------- */

@@ -27,7 +27,7 @@
   --gold: #EAB308;
   --purple-soft: #A78BFA;
   --radius: 16px;
-  --radius-sm: 10px;
+  --radius-sm: 8px;
   --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.35);
   --shadow-brand: 0 10px 30px rgba(20, 184, 166, 0.25);
   --transition: 0.2s ease;
@@ -252,6 +252,39 @@ a:hover { color: var(--brand); }
 }
 .nav-user-btn.dropdown-toggle::after { display: none; }
 
+.dropdown-menu-finora {
+  min-width: 12rem;
+  z-index: 1021;
+  padding: 0;
+  border-radius: var(--radius-sm);
+}
+
+.dropdown-item { 
+  font-weight: 500; 
+  color: var(--text-secondary); 
+  transition: all var(--transition);
+  padding: 0.6rem 1rem;
+}
+
+.dropdown-item:hover, .dropdown-item:focus {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.dropdown-menu-finora > li:first-child > .dropdown-item {
+  border-top-left-radius: calc(var(--radius-sm) - 1px);
+  border-top-right-radius: calc(var(--radius-sm) - 1px);
+}
+.dropdown-menu-finora > li:last-child > .dropdown-item {
+  border-bottom-left-radius: calc(var(--radius-sm) - 1px);
+  border-bottom-right-radius: calc(var(--radius-sm) - 1px);
+}
+
+.dropdown-menu-finora .dropdown-divider {
+  margin: 0.4rem 1rem;
+  border-top: 1px solid var(--border);
+}
+
 .nav-premium-link {
   display: inline-flex;
   flex-direction: column;
@@ -266,7 +299,6 @@ a:hover { color: var(--brand); }
   clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
   transition: filter var(--transition), transform var(--transition);
   line-height: 1.15;
-  box-shadow: 0 8px 20px rgba(79, 172, 254, 0.28);
 }
 .nav-premium-link:hover {
   filter: brightness(1.06);
