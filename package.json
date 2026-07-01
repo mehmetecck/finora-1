@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Finora — a modern stock market web app built with HTML5, CSS3, Bootstrap 5 and Vanilla JS.",
   "scripts": {
-    "start": "python3 -m http.server 8000",
-    "serve": "npx --yes serve ."
+    "start": "php -S localhost:8000"
   }
 }

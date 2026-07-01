@@ -1,22 +1,15 @@
 /* =====================================================================
    Finora - real market data service
    ---------------------------------------------------------------------
-   Providers:
-   - Finnhub: live quotes and company news
-   - Twelve Data: daily price history for charts
-
-   Add your key below to enable real daily quotes/charts:
-   const TWELVE_DATA_API_KEY = "YOUR_KEY";
+   The browser calls Finora's PHP proxy. API keys stay in Vercel environment
+   variables and are never included in this client-side file.
 
    This file intentionally does not fake prices. If the key is missing or the
    provider rejects a request, pages render a clear unavailable state.
    ===================================================================== */
 
 const FinoraAPI = (() => {
-  const FINNHUB_API_KEY = "d8qk0r9r01qrf6e1n31gd8qk0r9r01qrf6e1n320";
-  const FINNHUB_BASE = "https://finnhub.io/api/v1";
-  const TWELVE_DATA_API_KEY = "76d6376ad8b54c4681c49311a31590a6";
-  const TWELVE_BASE = "https://api.twelvedata.com";
+  const MARKET_PROXY = "/api/market-data.php";
   const REQUEST_TIMEOUT = 12000;
   const QUOTE_CACHE_TTL = 60 * 1000;
   const HISTORY_CACHE_TTL = 5 * 60 * 1000;
@@ -81,11 +74,11 @@ const FinoraAPI = (() => {
   }
 
   function hasFinnhubKey() {
-    return Boolean(FINNHUB_API_KEY && !FINNHUB_API_KEY.startsWith("YOUR_"));
+    return true;
   }
 
   function hasTwelveKey() {
-    return Boolean(TWELVE_DATA_API_KEY && !TWELVE_DATA_API_KEY.startsWith("YOUR_"));
+    return true;
   }
 
   function isConfigured() {
@@ -94,13 +87,13 @@ const FinoraAPI = (() => {
 
   function requireFinnhubKey() {
     if (!hasFinnhubKey()) {
-      throw new Error("Live quotes and news require a Finnhub API key in js/core/api.js.");
+      throw new Error("The PHP market-data proxy is unavailable.");
     }
   }
 
   function requireTwelveKey() {
     if (!hasTwelveKey()) {
-      throw new Error("Charts and price history require a Twelve Data API key in js/core/api.js.");
+      throw new Error("The PHP market-data proxy is unavailable.");
     }
   }
 
@@ -148,50 +141,51 @@ const FinoraAPI = (() => {
     }
   }
 
+  function proxyUrl(action) {
+    const url = new URL(MARKET_PROXY, window.location.href);
+    url.searchParams.set("action", action);
+    return url;
+  }
+
   async function timeSeries(symbol, outputsize = 60, options = {}) {
     requireTwelveKey();
-    const url = new URL(TWELVE_BASE + "/time_series");
+    const url = proxyUrl("time_series");
     url.searchParams.set("symbol", symbol);
     url.searchParams.set("interval", "1day");
     url.searchParams.set("outputsize", outputsize);
     if (options.exchange) url.searchParams.set("exchange", options.exchange);
     if (options.country) url.searchParams.set("country", options.country);
-    url.searchParams.set("apikey", TWELVE_DATA_API_KEY);
     const marketKey = `${options.exchange || ""}:${options.country || ""}`;
     return withCache(`time:${symbol}:${outputsize}:${marketKey}`, HISTORY_CACHE_TTL, () => fetchJson(url.toString()));
   }
 
   async function quote(symbol) {
     requireFinnhubKey();
-    const url = new URL(FINNHUB_BASE + "/quote");
+    const url = proxyUrl("quote");
     url.searchParams.set("symbol", symbol);
-    url.searchParams.set("token", FINNHUB_API_KEY);
     return withCache(`quote:${symbol}`, QUOTE_CACHE_TTL, () => fetchJson(url.toString()));
   }
 
   async function companySearch(query) {
     requireFinnhubKey();
-    const url = new URL(FINNHUB_BASE + "/search");
+    const url = proxyUrl("company_search");
     url.searchParams.set("q", query);
-    url.searchParams.set("token", FINNHUB_API_KEY);
     return withCache(`search:${query.toLowerCase()}`, HISTORY_CACHE_TTL, () => fetchJson(url.toString()));
   }
 
   async function twelveSymbolSearch(query, outputsize = 30) {
     requireTwelveKey();
-    const url = new URL(TWELVE_BASE + "/symbol_search");
+    const url = proxyUrl("symbol_search");
     url.searchParams.set("symbol", query);
     url.searchParams.set("outputsize", String(outputsize));
-    url.searchParams.set("apikey", TWELVE_DATA_API_KEY);
     return withCache(`symbol-search:${query.toLowerCase()}:${outputsize}`, HISTORY_CACHE_TTL, () => fetchJson(url.toString()));
   }
 
   async function stockCatalog(country, outputsize = 120) {
     requireTwelveKey();
-    const url = new URL(TWELVE_BASE + "/stocks");
+    const url = proxyUrl("stocks");
     url.searchParams.set("country", country);
     url.searchParams.set("outputsize", String(outputsize));
-    url.searchParams.set("apikey", TWELVE_DATA_API_KEY);
     return withCache(`stocks:${country.toUpperCase()}:${outputsize}`, CATALOG_CACHE_TTL, () => fetchJson(url.toString()));
   }
 
@@ -200,11 +194,10 @@ const FinoraAPI = (() => {
     const to = new Date();
     const from = new Date(to);
     from.setDate(to.getDate() - 14);
-    const url = new URL(FINNHUB_BASE + "/company-news");
+    const url = proxyUrl("company_news");
     url.searchParams.set("symbol", symbol);
     url.searchParams.set("from", from.toISOString().slice(0, 10));
     url.searchParams.set("to", to.toISOString().slice(0, 10));
-    url.searchParams.set("token", FINNHUB_API_KEY);
     return withCache(`news:${symbol}`, NEWS_CACHE_TTL, () => fetchJson(url.toString()));
   }
 
@@ -443,11 +436,10 @@ const FinoraAPI = (() => {
 
   async function fetchMarketMovers(direction, limit, country) {
     requireTwelveKey();
-    const url = new URL(TWELVE_BASE + "/market_movers/stocks");
+    const url = proxyUrl("market_movers");
     url.searchParams.set("direction", direction);
     url.searchParams.set("outputsize", String(limit));
     url.searchParams.set("country", country || "US");
-    url.searchParams.set("apikey", TWELVE_DATA_API_KEY);
     const data = await fetchJson(url.toString());
     return (data.values || [])
       .slice(0, limit)

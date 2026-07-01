@@ -7,8 +7,7 @@ A modern, responsive stock market platform built with **HTML**, **CSS**, **Boots
 - **Frontend:** HTML, CSS, Vanilla JS
 - **UI Framework:** [Bootstrap 5.3](https://getbootstrap.com/) & [Bootstrap Icons](https://icons.getbootstrap.com/)
 - **Authentication:** [Firebase Authentication](https://firebase.google.com/docs/auth)
-- **Backend:** **PHP** for server-side API proxying.
-- **PHP Dependencies:** [Composer](https://getcomposer.org/), [Guzzle](https://github.com/guzzle/guzzle), [php-dotenv](https://github.com/vlucas/phpdotenv), [firebase-php](https://github.com/kreait/firebase-php)
+- **Backend:** One dependency-free **PHP** market-data proxy.
 - **Deployment:** Configured for [Vercel](https://vercel.com) with PHP Serverless Functions.
 
 
@@ -18,26 +17,44 @@ All colors are defined as CSS custom properties in `assets/css/styles.css` (`:ro
 
 ## Backend & Deployment
 
-This project uses a **PHP API proxy** pattern to protect secret API keys for services like Twelve Data.
+The browser calls `api/market-data.php` instead of calling Finnhub and Twelve
+Data directly. The PHP file accepts only known actions, adds the appropriate
+secret API key on the server, fetches the provider response, and returns JSON.
 
-- **Security:** Client-side JavaScript calls our own PHP scripts in the `/api` directory. These server-side scripts securely load API keys from the `.env` file and then call the external market data APIs. This ensures secret keys are never exposed in the browser.
-- **Authentication:** The PHP endpoints are further secured using the Firebase Admin SDK to verify that requests are coming from a valid, logged-in user.
-- **Deployment:** The project is configured for zero-config deployment on **Vercel**. The `vercel.json` file instructs Vercel to deploy the PHP scripts as Serverless Functions. Remember to set your environment variables in the Vercel project settings.
+Before deploying, add these two values under **Vercel → Project Settings →
+Environment Variables**, then redeploy:
+
+```text
+FINNHUB_API_KEY=your_finnhub_key
+TWELVE_DATA_API_KEY=your_twelve_data_key
+```
+
+`vercel.json` deploys files in `api/` with the `vercel-php` runtime. Composer
+is not required.
+
+## Deploy to Vercel
+
+1. Import this GitHub repository into Vercel and use the **Other** framework
+   preset.
+2. In **Project Settings → Environment Variables**, add
+   `FINNHUB_API_KEY` and `TWELVE_DATA_API_KEY`.
+3. Deploy (or redeploy after adding the variables).
+4. Confirm PHP is running by opening:
+   `/api/market-data.php?action=quote&symbol=AAPL`
+
+That URL should return JSON from Finnhub. The web app uses the same endpoint
+automatically.
 
 ## Run Locally
 
-The project now requires a PHP environment to run the backend API proxy.
+Set the same environment variables in your terminal and start PHP's built-in
+server from the repository root:
 
-1.  **Install Dependencies:**
-    ```bash
-    composer install
-    ```
-2.  **Configure Environment:** Create a `.env` file in the root directory and add your secret API keys and file paths.
-
-3.  **Run the Server:**
-    ```bash
-    php -S localhost:8000
-    ```
+```powershell
+$env:FINNHUB_API_KEY="your_finnhub_key"
+$env:TWELVE_DATA_API_KEY="your_twelve_data_key"
+php -S localhost:8000
+```
 
 Then visit http://localhost:8000 in your browser.
 
@@ -73,29 +90,17 @@ country and exchange.
 
 ```
 Finora/
-├── api/                    # PHP Serverless Functions (API Proxy)
-│   └── market-data.php
-├── index.html              # Home              (HTML entry pages live at the root)
-├── market.html             # Market (stock detail)
-├── portfolio.html          # Portfolio
-│   │   ├── firebase-config.js  # Firebase init (add your project config here)
-│   │   ├── main.js             # Global `Finora`: auth, navbar, toasts, helpers
-│   │   ├── charts.js           # Vanilla <canvas> chart helper (no Chart.js)
-│   │   └── api.js              # FinoraAPI — now calls the internal /api proxy
-│   └── pages/              # One script per screen
-│       ├── home.js
-│       ├── market.js
-│       ├── portfolio.js
-│       ├── prosubscription.js
-│       ├── login.js
-│       └── profile.js
-│
-├── .env                    # Local environment variables (DO NOT COMMIT)
-├── composer.json           # PHP dependencies
-├── vercel.json             # Vercel deployment configuration
+├── api/
+│   └── market-data.php     # PHP proxy for Finnhub and Twelve Data
+├── js/
+│   ├── core/
+│   │   ├── api.js          # Calls the PHP proxy
+│   │   ├── main.js
+│   │   └── ...
+│   └── pages/
+├── index.html
+├── market.html
+├── vercel.json             # Deploys api/*.php with vercel-php
 ├── README.md
-├── package.json
-└── .gitignore
-
-
+└── package.json
 ```
