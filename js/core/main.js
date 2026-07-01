@@ -408,24 +408,6 @@ var Finora = (function() {
   var resolveReady;
   var authReady = new Promise(function(resolve) { resolveReady = resolve; });
 
-  /* ----------------- Session / authentication token ----------------
-     `idToken` is the credential used to authenticate requests to the
-     backend / market data API. With Firebase it's a JWT issued on login
-     and refreshed automatically; in local auth mode it's a stand-in id.
-     ----------------------------------------------------------------- */
-  var idToken = null;
-
-  async function captureToken(forceRefresh) {
-    if (forceRefresh === undefined) forceRefresh = false;
-    if (!currentUser) { idToken = null; return null; }
-    if (USE_FIREBASE) {
-      idToken = await currentUser.getIdToken(forceRefresh); // capture Firebase ID token
-    } else {
-      idToken = "local-session:" + currentUser.uid;
-    }
-    return idToken;
-  }
-
   async function setAuthPersistence(remember) {
     if (remember === undefined) remember = true;
     if (!USE_FIREBASE) return;
@@ -465,16 +447,14 @@ var Finora = (function() {
 
   if (USE_FIREBASE) {
     var firstFired = false;
-    auth.onAuthStateChanged(async function(user) {
+    auth.onAuthStateChanged(function(user) {
       currentUser = user;
-      await captureToken(); // start the session: grab the token for this user
       if (!firstFired) { firstFired = true; resolveReady(user); }
       renderNavAuth();
       renderLandingCtas();
     });
   } else {
     currentUser = Local.current();
-    captureToken();
     resolveReady(currentUser);
   }
   var marketCountryReady = Promise.all([authReady, countryCatalogReady]).then(resolveMarketCountry);
@@ -490,7 +470,6 @@ var Finora = (function() {
       var loginRes = Local.login({ email: email, password: password, remember: true });
       if (loginRes.ok) {
         currentUser = loginRes.user;
-        await captureToken();
       }
       return { ok: true };
     }
@@ -501,7 +480,6 @@ var Finora = (function() {
       var registrationCountry = readMarketCountry() || {};
       setExtras(cred.user.uid, { plan: "Free", balance: 0, currency: "USD", country: registrationCountry.name || "", countryCode: registrationCountry.code || "" });
       currentUser = cred.user;
-      await captureToken();
       return {
         ok: true,
         user: cred.user,
@@ -519,15 +497,14 @@ var Finora = (function() {
     var remember = opts.remember !== undefined ? opts.remember : true;
     if (!USE_FIREBASE) {
       var res = Local.login({ email: email, password: password, remember: remember });
-      if (res.ok) { currentUser = res.user; await captureToken(); }
+      if (res.ok) currentUser = res.user;
       return res;
     }
     try {
       await setAuthPersistence(remember);
       var cred = await auth.signInWithEmailAndPassword(email, password);
       currentUser = cred.user;
-      await captureToken(); // capture the auth token & start the session
-      return { ok: true, user: cred.user, token: idToken };
+      return { ok: true, user: cred.user };
     } catch (e) {
       return { ok: false, code: e.code, error: mapAuthError(e.code) };
     }
@@ -538,7 +515,7 @@ var Finora = (function() {
     var remember = opts.remember !== undefined ? opts.remember : true;
     if (!USE_FIREBASE) {
       var res = await Local.loginWithGoogle({ remember: remember });
-      if (res.ok) { currentUser = res.user; await captureToken(); }
+      if (res.ok) currentUser = res.user;
       return res;
     }
     try {
@@ -552,8 +529,7 @@ var Finora = (function() {
         setExtras(cred.user.uid, { plan: "Free", balance: 0, currency: "USD", country: googleCountry.name || "", countryCode: googleCountry.code || "" });
       }
       currentUser = cred.user;
-      await captureToken(); // capture the auth token & start the session
-      return { ok: true, user: cred.user, token: idToken };
+      return { ok: true, user: cred.user };
     } catch (e) {
       return { ok: false, code: e.code, error: mapAuthError(e.code) };
     }
@@ -609,8 +585,7 @@ var Finora = (function() {
       var extras = getExtras(cred.user.uid);
       if (!extras.plan) setExtras(cred.user.uid, { plan: "Free", balance: 0, currency: "USD" });
       currentUser = cred.user;
-      await captureToken();
-      return { ok: true, user: cred.user, token: idToken };
+      return { ok: true, user: cred.user };
     } catch (e) {
       return { ok: false, code: e.code, error: mapAuthError(e.code) };
     }
@@ -618,7 +593,6 @@ var Finora = (function() {
 
   function logout() {
     function go() { window.location.href = "index.html"; }
-    idToken = null; // end the session
     if (!USE_FIREBASE) { Local.clearSession(); currentUser = null; go(); return; }
     auth.signOut().finally(go);
   }

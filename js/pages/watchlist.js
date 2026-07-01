@@ -166,8 +166,8 @@ document.addEventListener("DOMContentLoaded", async function() {
   function watchlistConfigState() {
     return `<div class="text-center text-muted-2 py-5">
         <i class="bi bi-key d-block mb-2" style="font-size:1.9rem;opacity:.55"></i>
-        <div class="fw-semibold text-white mb-1">Market data is not configured</div>
-        <div>Add <code>FINNHUB_API_KEY</code> and <code>TWELVE_DATA_API_KEY</code> in the Vercel project's Environment Variables.</div>
+        <div class="fw-semibold text-white mb-1">Market data is temporarily unavailable</div>
+        <div>Please try again later or reload the page.</div>
       </div>`;
   }
 

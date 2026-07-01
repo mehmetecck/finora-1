@@ -1,8 +1,9 @@
 /* =====================================================================
    Finora - real market data service
    ---------------------------------------------------------------------
-   The browser calls Finora's PHP proxy. API keys stay in Vercel environment
-   variables and are never included in this client-side file.
+   Vercel uses Finora's PHP proxy. Local development calls the providers
+   directly so the project also works with minimal PHP installations that do
+   not include cURL or HTTPS support.
 
    This file intentionally does not fake prices. If the key is missing or the
    provider rejects a request, pages render a clear unavailable state.
@@ -10,6 +11,18 @@
 
 const FinoraAPI = (() => {
   const MARKET_PROXY = "/api/market-data.php";
+  const FINNHUB_API_KEY = "d8qk0r9r01qrf6e1n31gd8qk0r9r01qrf6e1n320";
+  const TWELVE_DATA_API_KEY = "76d6376ad8b54c4681c49311a31590a6";
+  const LOCAL_DIRECT_API = ["localhost", "127.0.0.1", "::1", ""].includes(window.location.hostname);
+  const DIRECT_ACTIONS = {
+    time_series: ["https://api.twelvedata.com/time_series", "apikey", TWELVE_DATA_API_KEY],
+    symbol_search: ["https://api.twelvedata.com/symbol_search", "apikey", TWELVE_DATA_API_KEY],
+    stocks: ["https://api.twelvedata.com/stocks", "apikey", TWELVE_DATA_API_KEY],
+    market_movers: ["https://api.twelvedata.com/market_movers/stocks", "apikey", TWELVE_DATA_API_KEY],
+    quote: ["https://finnhub.io/api/v1/quote", "token", FINNHUB_API_KEY],
+    company_search: ["https://finnhub.io/api/v1/search", "token", FINNHUB_API_KEY],
+    company_news: ["https://finnhub.io/api/v1/company-news", "token", FINNHUB_API_KEY],
+  };
   const REQUEST_TIMEOUT = 12000;
   const QUOTE_CACHE_TTL = 60 * 1000;
   const HISTORY_CACHE_TTL = 5 * 60 * 1000;
@@ -142,6 +155,12 @@ const FinoraAPI = (() => {
   }
 
   function proxyUrl(action) {
+    if (LOCAL_DIRECT_API && DIRECT_ACTIONS[action]) {
+      const [providerUrl, keyName, keyValue] = DIRECT_ACTIONS[action];
+      const directUrl = new URL(providerUrl);
+      directUrl.searchParams.set(keyName, keyValue);
+      return directUrl;
+    }
     const url = new URL(MARKET_PROXY, window.location.href);
     url.searchParams.set("action", action);
     return url;

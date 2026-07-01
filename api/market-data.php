@@ -16,6 +16,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 
 $action = $_GET['action'] ?? '';
 
+// Classroom defaults keep local setup simple. Environment variables, when
+// present, override these values without requiring any code changes.
+$defaultApiKeys = [
+    'FINNHUB_API_KEY' => 'd8qk0r9r01qrf6e1n31gd8qk0r9r01qrf6e1n320',
+    'TWELVE_DATA_API_KEY' => '76d6376ad8b54c4681c49311a31590a6',
+];
+
 // Each action has one fixed provider URL and a short list of allowed inputs.
 $actions = [
     'time_series' => [
@@ -69,7 +76,7 @@ if (!is_string($action) || !isset($actions[$action])) {
 }
 
 $config = $actions[$action];
-$apiKey = getenv($config['env']);
+$apiKey = getenv($config['env']) ?: ($defaultApiKeys[$config['env']] ?? '');
 
 if (!$apiKey) {
     http_response_code(500);

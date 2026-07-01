@@ -17,17 +17,16 @@ All colors are defined as CSS custom properties in `assets/css/styles.css` (`:ro
 
 ## Backend & Deployment
 
-The browser calls `api/market-data.php` instead of calling Finnhub and Twelve
-Data directly. The PHP file accepts only known actions, adds the appropriate
-secret API key on the server, fetches the provider response, and returns JSON.
+On Vercel, the browser calls `api/market-data.php` instead of calling Finnhub
+and Twelve Data directly. The PHP file accepts only known actions, adds the
+appropriate API key on the server, fetches the provider response, and returns
+JSON. Localhost uses the same built-in keys directly so it also works with
+minimal PHP installations that lack the cURL extension.
 
-Before deploying, add these two values under **Vercel → Project Settings →
-Environment Variables**, then redeploy:
-
-```text
-FINNHUB_API_KEY=your_finnhub_key
-TWELVE_DATA_API_KEY=your_twelve_data_key
-```
+For this classroom project, the market-data keys are included as defaults in
+the PHP proxy so a fresh clone works without configuration. Optional
+`FINNHUB_API_KEY` and `TWELVE_DATA_API_KEY` environment variables override
+those defaults when present.
 
 `vercel.json` deploys files in `api/` with the `vercel-php` runtime. Composer
 is not required.
@@ -36,10 +35,8 @@ is not required.
 
 1. Import this GitHub repository into Vercel and use the **Other** framework
    preset.
-2. In **Project Settings → Environment Variables**, add
-   `FINNHUB_API_KEY` and `TWELVE_DATA_API_KEY`.
-3. Deploy (or redeploy after adding the variables).
-4. Confirm PHP is running by opening:
+2. Deploy the project; no environment-variable setup is required.
+3. Confirm PHP is running by opening:
    `/api/market-data.php?action=quote&symbol=AAPL`
 
 That URL should return JSON from Finnhub. The web app uses the same endpoint
@@ -47,12 +44,9 @@ automatically.
 
 ## Run Locally
 
-Set the same environment variables in your terminal and start PHP's built-in
-server from the repository root:
+Start PHP's built-in server from the repository root:
 
 ```powershell
-$env:FINNHUB_API_KEY="your_finnhub_key"
-$env:TWELVE_DATA_API_KEY="your_twelve_data_key"
 php -S localhost:8000
 ```
 
