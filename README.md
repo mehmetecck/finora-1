@@ -1,28 +1,45 @@
 # Finora — Stock Market Web App
 
-A modern, responsive stock market platform built with **HTML**, **CSS**, **Bootstrap** and **JavaScript**. 
+A modern, responsive stock market platform built with **HTML**, **CSS**, **Bootstrap**, **JavaScript**, and **PHP**.
 
 ## Tech Stack
 
-- [Bootstrap 5.3](https://getbootstrap.com/) 
-- [Bootstrap Icons](https://icons.getbootstrap.com/) 
-- [Firebase Authentication](https://firebase.google.com/docs/auth)
-- Google Fonts — Inter
-- Vanilla JS — all app logic
+- **Frontend:** HTML, CSS, Vanilla JS
+- **UI Framework:** [Bootstrap 5.3](https://getbootstrap.com/) & [Bootstrap Icons](https://icons.getbootstrap.com/)
+- **Authentication:** [Firebase Authentication](https://firebase.google.com/docs/auth)
+- **Backend:** **PHP** for server-side API proxying.
+- **PHP Dependencies:** [Composer](https://getcomposer.org/), [Guzzle](https://github.com/guzzle/guzzle), [php-dotenv](https://github.com/vlucas/phpdotenv), [firebase-php](https://github.com/kreait/firebase-php)
+- **Deployment:** Configured for [Vercel](https://vercel.com) with PHP Serverless Functions.
+
 
 ## Color scheme
 
 All colors are defined as CSS custom properties in `assets/css/styles.css` (`:root`), following the project's design spec (Rich Navy background, Turquoise brand, Emerald/Red market colors, and a premium Blue→Purple→Pink gradient).
 
-## Run
+## Backend & Deployment
 
-It's a static site — just open `index.html` in a browser, or serve the folder:
+This project uses a **PHP API proxy** pattern to protect secret API keys for services like Twelve Data.
 
-```
-python3 -m http.server 8000
-```
+- **Security:** Client-side JavaScript calls our own PHP scripts in the `/api` directory. These server-side scripts securely load API keys from the `.env` file and then call the external market data APIs. This ensures secret keys are never exposed in the browser.
+- **Authentication:** The PHP endpoints are further secured using the Firebase Admin SDK to verify that requests are coming from a valid, logged-in user.
+- **Deployment:** The project is configured for zero-config deployment on **Vercel**. The `vercel.json` file instructs Vercel to deploy the PHP scripts as Serverless Functions. Remember to set your environment variables in the Vercel project settings.
 
-Then visit http://localhost:8000
+## Run Locally
+
+The project now requires a PHP environment to run the backend API proxy.
+
+1.  **Install Dependencies:**
+    ```bash
+    composer install
+    ```
+2.  **Configure Environment:** Create a `.env` file in the root directory and add your secret API keys and file paths.
+
+3.  **Run the Server:**
+    ```bash
+    php -S localhost:8000
+    ```
+
+Then visit http://localhost:8000 in your browser.
 
 ## LogoKit setup
 
@@ -56,25 +73,15 @@ country and exchange.
 
 ```
 Finora/
+├── api/                    # PHP Serverless Functions (API Proxy)
+│   └── market-data.php
 ├── index.html              # Home              (HTML entry pages live at the root)
 ├── market.html             # Market (stock detail)
 ├── portfolio.html          # Portfolio
-├── prosubscription.html    # Pro / pricing
-├── login.html              # Login / Registration
-├── profile.html            # Profile
-│
-├── assets/                 # Static assets
-│   └── css/
-│       └── styles.css      # Design system + components
-│
-├── js/
-│   ├── core/               # Shared scripts, loaded on every page
-│   │   ├── config.js           # Public browser configuration
-│   │   ├── components.js       # Shared header and footer web components
 │   │   ├── firebase-config.js  # Firebase init (add your project config here)
 │   │   ├── main.js             # Global `Finora`: auth, navbar, toasts, helpers
 │   │   ├── charts.js           # Vanilla <canvas> chart helper (no Chart.js)
-│   │   └── api.js              # FinoraAPI — market/portfolio data service (add your API here)
+│   │   └── api.js              # FinoraAPI — now calls the internal /api proxy
 │   └── pages/              # One script per screen
 │       ├── home.js
 │       ├── market.js
@@ -83,7 +90,12 @@ Finora/
 │       ├── login.js
 │       └── profile.js
 │
+├── .env                    # Local environment variables (DO NOT COMMIT)
+├── composer.json           # PHP dependencies
+├── vercel.json             # Vercel deployment configuration
 ├── README.md
 ├── package.json
 └── .gitignore
+
+
 ```

@@ -1,4 +1,5 @@
 node_modules
+vendor/
 presentation
 .env
 .DS_Store
